@@ -11,7 +11,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import pl.bpiatek.linkshortenerlinkservice.config.ClockConfig;
+import pl.bpiatek.linkshortenerlinkservice.config.ClockConfiguration;
 
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -26,7 +26,7 @@ import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @Testcontainers
 @JdbcTest
-@Import({JdbcLinkRepository.class, ClockConfig.class, LinkFixtures.class})
+@Import({JdbcLinkRepository.class, ClockConfiguration.class, LinkFixtures.class})
 @ActiveProfiles("test")
 class JdbcLinkRepositoryTest {
 

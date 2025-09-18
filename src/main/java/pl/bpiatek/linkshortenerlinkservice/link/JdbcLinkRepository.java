@@ -3,7 +3,6 @@ package pl.bpiatek.linkshortenerlinkservice.link;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
-import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -14,7 +13,6 @@ import java.util.Optional;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
-@Repository
 class JdbcLinkRepository implements LinkRepository {
 
     private final NamedParameterJdbcTemplate namedJdbcTemplate;

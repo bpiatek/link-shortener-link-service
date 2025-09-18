@@ -1,0 +1,21 @@
+package pl.bpiatek.linkshortenerlinkservice.link;
+
+import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
+
+class LinkMapper {
+
+    private String baseLinkUrl;
+
+    LinkMapper(String baseLinkUrl) {
+        this.baseLinkUrl = baseLinkUrl;
+    }
+
+    CreateLinkResponse toCreateLinkResponse(Link link) {
+        return new CreateLinkResponse(baseLinkUrl + link.shortUrl(), link.longUrl());
+    }
+
+    Link toLink(String userId, String longUrl, String shortUrl) {
+        return new Link(userId, shortUrl, longUrl);
+    }
+
+}

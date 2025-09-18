@@ -20,4 +20,8 @@ record Link(
                 this.notes, this.isActive, this.createdAt, this.updatedAt, this.expiresAt
         );
     }
+
+    Link(String userId, String shortUrl, String longUrl) {
+        this(null, userId, shortUrl, longUrl, null, null, false, null, null, null);
+    }
 }
