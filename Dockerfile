@@ -9,13 +9,16 @@ WORKDIR /app
 COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
 
-# Warm up Maven cache using mvnw (no settings.xml)
+# Ensure no settings.xml in cache
+RUN rm -f /root/.m2/settings.xml || true
+
+# Warm up Maven cache using mvnw (no secrets)
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw dependency:go-offline
 
 
 # ===================================================================================
-# STAGE 2: Builder (uses secrets, reuses deps cache)
+# STAGE 2: Builder (uses secrets)
 # ===================================================================================
 FROM eclipse-temurin:21-jdk-jammy AS builder
 
@@ -25,14 +28,14 @@ WORKDIR /app
 COPY --from=deps /root/.m2 /root/.m2
 COPY . .
 
-# Build application with secret settings.xml (for private repositories)
+# Build application with secret settings.xml
 RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
     --mount=type=cache,target=/root/.m2 \
     ./mvnw package -DskipTests --global-settings /root/.m2/settings.xml
 
 
 # ===================================================================================
-# STAGE 3: Extractor (unpacks layered jar)
+# STAGE 3: Extractor
 # ===================================================================================
 FROM builder AS extractor
 
@@ -43,7 +46,7 @@ RUN java -Djarmode=layertools -jar application.jar extract
 
 
 # ===================================================================================
-# STAGE 4: Final runtime image
+# STAGE 4: Final image
 # ===================================================================================
 FROM eclipse-temurin:21-jre-jammy AS final
 
