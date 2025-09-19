@@ -1,7 +1,7 @@
 # ===================================================================================
 # STAGE 1: Builder
 # ===================================================================================
-FROM eclipse-temurin:21-jdk-jammy AS builder
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 
 WORKDIR /app
 
@@ -21,18 +21,17 @@ RUN curl -v https://repo1.maven.org/maven2/ || echo "Failed to reach Maven Centr
 RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
     cat /root/.m2/settings.xml && echo "settings.xml mounted successfully" || echo "Failed to mount settings.xml"
 
-# 4. Resolve dependencies with verbose output.
+# 4. Resolve dependencies with verbose output, log to file.
 RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
-    --mount=type=cache,target=/root/.m2 \
-    ./mvnw dependency:resolve -X --global-settings /root/.m2/settings.xml
+    mvn dependency:resolve -X --global-settings /root/.m2/settings.xml > maven-docker-log.txt 2>&1; \
+    cat maven-docker-log.txt || echo "Maven command failed"
 
 # 5. Copy the source code.
 COPY src ./src
 
 # 6. Build the application JAR.
 RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
-    --mount=type=cache,target=/root/.m2 \
-    ./mvnw package -DskipTests --global-settings /root/.m2/settings.xml
+    mvn package -DskipTests --global-settings /root/.m2/settings.xml
 
 # ===================================================================================
 # STAGE 2: Final Image

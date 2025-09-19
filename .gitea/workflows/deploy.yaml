@@ -80,6 +80,8 @@ jobs:
         run: |
           docker build \
             --network host \
+            --memory 2g \
+            --cpus 2 \
             --secret id=maven-settings,src=settings.xml \
             -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} . \
             | tee docker-build.log
