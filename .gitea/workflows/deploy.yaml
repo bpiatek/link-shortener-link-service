@@ -26,6 +26,13 @@ jobs:
           id
           groups
 
+      - name: Test Repository Connectivity
+        run: |
+          curl -v https://repo.bpiatek.pl/releases || echo "Public access to Reposilite failed (expected if auth required)"
+          curl -v -u ${{ secrets.REPOSILITE_USERNAME }}:${{ secrets.REPOSILITE_PASSWORD }} https://repo.bpiatek.pl/releases/pl/bpiatek/link-shortener-contracts/maven-metadata.xml || echo "Access to Reposilite with credentials failed"
+          curl -v https://packages.confluent.io/maven/ || echo "Confluent repo access failed"
+          curl -v https://repo1.maven.org/maven2/ || echo "Maven Central access failed"
+
       - name: Create Maven settings.xml for Docker build
         run: |
           SETTINGS_FILE="settings.xml"
@@ -42,6 +49,7 @@ jobs:
               </servers>
             </settings>" > "$SETTINGS_FILE"
           echo "Maven settings.xml for Docker created at $SETTINGS_FILE"
+          cat "$SETTINGS_FILE" # Debug: Verify settings.xml content
 
       - name: Get Image Tag
         id: get_tag
@@ -60,6 +68,7 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build \
+            --network host \
             --secret id=maven-settings,src=settings.xml \
             -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} .
           echo "Docker image built: ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }}"
@@ -68,7 +77,6 @@ jobs:
         run: |
           rm settings.xml
           echo "Cleaned up temporary settings.xml"
-
 
       - name: Verify microk8s availability and version
         run: |
