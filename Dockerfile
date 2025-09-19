@@ -1,7 +1,7 @@
 # ===================================================================================
 # STAGE 1: The "Builder" Stage
 # ===================================================================================
-FROM eclipse-temurin:21-jdk-jammy as builder
+FROM eclipse-temurin:21-jdk-jammy AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
 # ===================================================================================
 # STAGE 2: The "Extractor"
 # ===================================================================================
-FROM builder as extractor
+FROM builder AS extractor
 
 COPY --from=builder /app/target/*.jar application.jar
 RUN java -Djarmode=layertools -jar application.jar extract
@@ -31,7 +31,7 @@ RUN java -Djarmode=layertools -jar application.jar extract
 # ===================================================================================
 # STAGE 3: The Final Image
 # ===================================================================================
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:21-jre-jammy AS final
 
 WORKDIR /app
 
