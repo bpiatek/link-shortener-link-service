@@ -16,38 +16,13 @@ jobs:
   build-and-deploy:
     name: Build and Deploy to ${{ github.event.inputs.environment }}
     runs-on: java21-build
+    env:
+      # Enable Docker BuildKit, which is required for secret and cache mounts.
+      DOCKER_BUILDKIT: 1
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Show Current User and Groups
-        run: |
-          id
-          groups
-
-      - name: Check Docker Version
-        run: |
-          docker --version
-          docker buildx version
-
-      - name: Check Runner Resources
-        run: |
-          free -m
-          df -h
-          top -bn1 | head -n 10
-
-      - name: Print Runner Environment
-        run: |
-          env
-          ls -l .
-
-      - name: Test Repository Connectivity
-        run: |
-          curl -v https://repo.bpiatek.pl/releases || echo "Public access to Reposilite failed (expected if auth required)"
-          curl -v -u ${{ secrets.REPOSILITE_USERNAME }}:${{ secrets.REPOSILITE_PASSWORD }} https://repo.bpiatek.pl/releases/pl/bpiatek/link-shortener-contracts/maven-metadata.xml || echo "Access to Reposilite with credentials failed"
-          curl -v https://packages.confluent.io/maven/ || echo "Confluent repo access failed"
-          curl -v https://repo1.maven.org/maven2/ || echo "Maven Central access failed"
 
       - name: Create Maven settings.xml for Docker build
         run: |
@@ -64,82 +39,31 @@ jobs:
                 </server>
               </servers>
             </settings>" > "$SETTINGS_FILE"
-          echo "Maven settings.xml for Docker created at $SETTINGS_FILE"
-          cat "$SETTINGS_FILE"
+          echo "✅ Maven settings.xml for Docker created."
 
-      - name: Test Maven Dependency Resolution
+      - name: Get Image Tag and Name
+        id: image_info
         run: |
-          mvn --settings settings.xml dependency:resolve -X | tee maven-log.txt
-          echo "Maven dependency resolution logs saved to maven-log.txt"
-
-      - name: Get Image Tag
-        id: get_tag
-        run: |
-          TAG=$(git rev-parse --short HEAD)
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Image tag set to $TAG"
-
-      - name: Define Image Name
-        id: image_name
-        run: |
-          NAME=link-shortener-link-service
-          echo "name=$NAME" >> $GITHUB_OUTPUT
-          echo "Image name set to $NAME"
+          echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "name=link-shortener-link-service" >> $GITHUB_OUTPUT
 
       - name: Build Docker Image
         run: |
           docker build \
-            --network host \
-            --memory 2g \
             --secret id=maven-settings,src=settings.xml \
-            -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} . \
-            | tee docker-build.log
-          echo "Docker build logs saved to docker-build.log"
-          cat docker-build.log
-
-      - name: Check Docker Daemon Logs
-        if: always()
-        run: |
-          journalctl -u docker -n 100 --no-pager
+            -t ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }} .
+          echo "✅ Docker image built: ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }}"
 
       - name: Clean up Maven settings.xml
+        if: always() # This step runs even if the build fails, for security.
         run: |
           rm settings.xml
-          echo "Cleaned up temporary settings.xml"
-
-      - name: Verify microk8s availability and version
-        run: |
-          echo "PATH is $PATH"
-          microk8s status --wait-ready
-          microk8s version
-
-      - name: Debug PATH and microk8s path
-        run: |
-          echo $PATH
-          which microk8s
-          ls -l /snap/bin/microk8s
-          ls -l /usr/bin/snap
-          snap list
-
-      - name: Verify Docker Image Exists Before Import
-        run: |
-          echo "Checking if Docker image exists..."
-          docker image ls | grep ${{ steps.image_name.outputs.name }} | grep ${{ steps.get_tag.outputs.tag }}
-          echo "Docker image is present"
+          echo "✅ Cleaned up temporary settings.xml"
 
       - name: Import Image into MicroK8s
         run: |
-          echo "Importing image into microk8s..."
-          echo "${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }}"
-          set -x
-          docker save ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} | sudo /snap/bin/microk8s ctr image import -
-          echo "Image import completed"
-
-      - name: Debug MicroK8s Helm Access
-        run: |
-          set -x
-          sudo /snap/bin/microk8s status --wait-ready --timeout 30
-          sudo /snap/bin/microk8s helm version || echo "helm version failed"
+          docker save ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }} | sudo /snap/bin/microk8s ctr image import -
+          echo "✅ Image imported into MicroK8s."
 
       - name: Run Helm Upgrade
         run: |
@@ -150,7 +74,7 @@ jobs:
             ./helm \
             --namespace ${{ github.event.inputs.environment }} \
             --values helm/values-${{ github.event.inputs.environment }}.yaml \
-            --set image.repository=${{ steps.image_name.outputs.name }} \
-            --set image.tag=${{ steps.get_tag.outputs.tag }} \
+            --set image.repository=${{ steps.image_info.outputs.name }} \
+            --set image.tag=${{ steps.image_info.outputs.tag }} \
             --set spring.profiles.active=${{ github.event.inputs.environment }}
-          echo "Helm deployment finished"
+          echo "✅ Helm deployment finished."
