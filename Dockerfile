@@ -9,10 +9,9 @@ WORKDIR /app
 COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
 
-# Combine the creation of the dummy settings.xml and the dependency download
-# into a SINGLE RUN command. This ensures the settings file is created AFTER
-# the cache is mounted, making it visible to Maven.
-RUN --mount=type=cache,target=/root/.m2 \
+# THIS IS THE FIRST CHANGE:
+# We give the cache mount a specific ID: 'maven-cache'.
+RUN --mount=type=cache,id=maven-cache,target=/root/.m2 \
     sh -c 'echo "<settings/>" > /root/.m2/settings.xml && ./mvnw dependency:go-offline'
 
 
@@ -23,40 +22,22 @@ FROM eclipse-temurin:21-jdk-jammy AS builder
 
 WORKDIR /app
 
-# Copy the pre-populated Maven cache from the 'deps' stage.
-COPY --from=deps /root/.m2 /root/.m2
-# Copy the entire project source code.
+# THIS IS THE SECOND CHANGE:
+# We REMOVE the COPY command for the .m2 directory. It is no longer needed
+# because the shared cache mount will provide the dependencies.
+# COPY --from=deps /root/.m2 /root/.m2  <-- DELETE THIS LINE
 COPY . .
 
-# Build the application JAR.
-# The secret mount temporarily overwrites the dummy settings.xml with the real one.
+# THIS IS THE THIRD CHANGE:
+# We use the SAME cache mount ID: 'maven-cache'.
+# Docker will now mount the exact same volume that was populated in the 'deps' stage.
 RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
-    --mount=type=cache,target=/root/.m2 \
+    --mount=type=cache,id=maven-cache,target=/root/.m2 \
     ./mvnw package -DskipTests --global-settings /root/.m2/settings.xml
 
 
 # ===================================================================================
-# STAGE 3: Extractor
+# STAGE 3 & 4 (NO CHANGES NEEDED)
 # ===================================================================================
 FROM builder AS extractor
-
-WORKDIR /app
-
-COPY --from=builder /app/target/*.jar application.jar
-RUN java -Djarmode=layertools -jar application.jar extract
-
-
-# ===================================================================================
-# STAGE 4: Final image
-# ===================================================================================
-FROM eclipse-temurin:21-jre-jammy
-
-WORKDIR /app
-
-# Copy the layers from the extractor stage
-COPY --from=extractor /app/dependencies/ ./
-COPY --from=extractor /app-boot-loader/ ./
-COPY --from=extractor /app/snapshot-dependencies/ ./
-COPY --from=extractor /app/application/ ./
-
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+# ... (rest of your Dockerfile is the same)
