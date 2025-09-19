@@ -31,8 +31,7 @@ jobs:
 
       - name: Create Maven settings.xml for Docker build
         run: |
-          SETTINGS_FILE="${{ runner.temp }}/settings.xml"
-          
+          SETTINGS_FILE="settings.xml"
           echo "<settings xmlns='http://maven.apache.org/SETTINGS/1.0.0'
                 xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
                 xsi:schemaLocation='http://maven.apache.org/SETTINGS/1.0.0
@@ -45,9 +44,7 @@ jobs:
                 </server>
               </servers>
             </settings>" > "$SETTINGS_FILE"
-          
-          echo "MAVEN_SETTINGS_PATH=$SETTINGS_FILE" >> $GITHUB_ENV
-          echo "✅ Maven settings.xml created for Reposilite."
+          echo "Maven settings.xml for Docker created at $SETTINGS_FILE"
 
       - name: Get Image Tag
         id: get_tag
@@ -66,9 +63,15 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build \
-            --secret id=maven-settings,src=${{ steps.maven_settings.outputs.path }} \
+            --secret id=maven-settings,src=settings.xml \
             -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} .
           echo "Docker image built: ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }}"
+
+      - name: Clean up Maven settings.xml
+        run: |
+          rm settings.xml
+          echo "Cleaned up temporary settings.xml"
+
 
       - name: Verify microk8s availability and version
         run: |
@@ -88,7 +91,7 @@ jobs:
         run: |
           echo "Checking if Docker image exists..."
           docker image ls | grep ${{ steps.image_name.outputs.name }} | grep ${{ steps.get_tag.outputs.tag }}
-          echo "✅ Docker image is present"
+          echo "Docker image is present"
 
       - name: Import Image into MicroK8s
         run: |
@@ -96,7 +99,7 @@ jobs:
           echo "${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }}"
           set -x
           docker save ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} | sudo /snap/bin/microk8s ctr image import -
-          echo "✅ Image import completed"
+          echo "Image import completed"
 
       - name: Debug MicroK8s Helm Access
         run: |
