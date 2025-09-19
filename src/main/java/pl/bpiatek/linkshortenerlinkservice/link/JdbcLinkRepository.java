@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -97,6 +96,6 @@ class JdbcLinkRepository implements LinkRepository {
             rs.getBoolean("is_active"),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("updated_at").toInstant(),
-            rs.getTimestamp("expires_at").toInstant()
+            Optional.ofNullable(rs.getTimestamp("expires_at")).map(Timestamp::toInstant).orElse(null)
     );
 }

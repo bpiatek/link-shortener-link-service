@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -63,7 +64,19 @@ class LinkFixtures {
         return namedJdbcTemplate.queryForObject("SELECT COUNT(*) FROM links WHERE user_id = :userId", Map.of("userId", userId), Integer.class);
     }
 
-    private Link getLinkById(Long id) {
+    Link getLinkByShortUrl(String shortUrl) {
+        var sql = """
+                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
+                FROM links l
+                WHERE l.short_url = :short_url""";
+
+
+        var result = namedJdbcTemplate.query(sql, Map.of("short_url", shortUrl), LINK_ROW_MAPPER);
+
+        return result.isEmpty() ? null : result.getFirst();
+    }
+
+    Link getLinkById(Long id) {
         var sql = """
                 SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
                 FROM links l
@@ -73,7 +86,6 @@ class LinkFixtures {
         var result = namedJdbcTemplate.query(sql, Map.of("id", id), LINK_ROW_MAPPER);
 
         return result.isEmpty() ? null : result.getFirst();
-
     }
 
     private Timestamp getProvidedDateOr(LocalDateTime provided, Instant or) {
@@ -98,6 +110,6 @@ class LinkFixtures {
             rs.getBoolean("is_active"),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("updated_at").toInstant(),
-            rs.getTimestamp("expires_at").toInstant()
+            Optional.ofNullable(rs.getTimestamp("expires_at")).map(Timestamp::toInstant).orElse(null)
     );
 }

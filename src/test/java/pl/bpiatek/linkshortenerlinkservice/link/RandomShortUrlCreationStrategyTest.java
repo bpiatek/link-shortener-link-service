@@ -5,8 +5,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import pl.bpiatek.linkshortenerlinkservice.exception.UnableToGenerateUniqueShortUrlException;
 
@@ -37,6 +39,9 @@ class RandomShortUrlCreationStrategyTest {
     @Mock
     private ShortUrlGenerator shortUrlGenerator;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private RandomShortUrlCreationStrategy strategy;
 
     @BeforeEach
@@ -50,15 +55,18 @@ class RandomShortUrlCreationStrategyTest {
         // given
         var uniqueShortUrl = "abc1234";
         givenGeneratorReturns(uniqueShortUrl);
-        givenSuccessfulSave(uniqueShortUrl);
+        var savedLink = givenSuccessfulSave(uniqueShortUrl);
 
         // when
-        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null);
+        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, eventPublisher);
 
         // then
         assertThat(actualResponse.shortUrl()).contains(uniqueShortUrl);
         verify(shortUrlGenerator).generate();
         verify(linkRepository).save(any(Link.class));
+        var eventCaptor = ArgumentCaptor.forClass(LinkCreatedApplicationEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().link()).isEqualTo(savedLink);
     }
 
     @Test
@@ -72,7 +80,7 @@ class RandomShortUrlCreationStrategyTest {
         givenSuccessfulSave(uniqueShortUrl);
 
         // when
-        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null);
+        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, eventPublisher);
 
         // then:
         assertThat(actualResponse.shortUrl()).contains(uniqueShortUrl);
@@ -89,7 +97,7 @@ class RandomShortUrlCreationStrategyTest {
         givenCollisionOnSave(collidingShortUrl);
 
         // then
-        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, null))
+        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, null, eventPublisher))
                 .isInstanceOf(UnableToGenerateUniqueShortUrlException.class);
         verify(shortUrlGenerator, times(5)).generate();
         verify(linkRepository, times(5)).save(any(Link.class));
@@ -105,7 +113,7 @@ class RandomShortUrlCreationStrategyTest {
         given(linkRepository.save(link)).willThrow(new DataIntegrityViolationException("Collision!"));
     }
 
-    private void givenSuccessfulSave(String uniqueShortUrl) {
+    private Link givenSuccessfulSave(String uniqueShortUrl) {
         var linkToSave = aLinkWithShortUrl(uniqueShortUrl);
         var savedLink = aSavedLinkWithShortUrl(1L, uniqueShortUrl);
         var response = aCreateLinkResponseWithShortUrl(uniqueShortUrl);
@@ -113,5 +121,7 @@ class RandomShortUrlCreationStrategyTest {
         given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl))).willReturn(linkToSave);
         given(linkRepository.save(linkToSave)).willReturn(savedLink);
         given(linkMapper.toCreateLinkResponse(savedLink)).willReturn(response);
+
+        return savedLink;
     }
 }

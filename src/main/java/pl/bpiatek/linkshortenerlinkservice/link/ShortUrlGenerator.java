@@ -9,7 +9,7 @@ class ShortUrlGenerator {
 
     private final int urlLength;
 
-    ShortUrlGenerator(int urlLength) {
+    public ShortUrlGenerator(int urlLength) {
         this.urlLength = urlLength;
     }
 

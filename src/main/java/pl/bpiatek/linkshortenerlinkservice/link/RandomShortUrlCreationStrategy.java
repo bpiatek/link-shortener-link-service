@@ -2,11 +2,13 @@ package pl.bpiatek.linkshortenerlinkservice.link;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 import pl.bpiatek.linkshortenerlinkservice.exception.UnableToGenerateUniqueShortUrlException;
 
-class RandomShortUrlCreationStrategy implements  LinkCreationStrategy {
+
+class RandomShortUrlCreationStrategy implements LinkCreationStrategy {
 
     private static final Logger log = LoggerFactory.getLogger(RandomShortUrlCreationStrategy.class);
     private static final int MAX_GENERATION_ATTEMPTS = 5;
@@ -22,12 +24,15 @@ class RandomShortUrlCreationStrategy implements  LinkCreationStrategy {
     }
 
     @Override
-    public CreateLinkResponse createLink(String userId, String longUrl, String ignoredShortUrl) {
+    public CreateLinkResponse createLink(String userId, String longUrl, String ignoredShortUrl, ApplicationEventPublisher eventPublisher) {
         for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
             var generatedShortUrl = shortUrlGenerator.generate();
             try {
                 var linkToSave = linkMapper.toLink(userId, longUrl, generatedShortUrl);
                 var savedLink = linkRepository.save(linkToSave);
+
+                eventPublisher.publishEvent(new LinkCreatedApplicationEvent(savedLink));
+
                 return linkMapper.toCreateLinkResponse(savedLink);
             } catch (DataIntegrityViolationException e) {
                 // A collision occurred due to the race condition.

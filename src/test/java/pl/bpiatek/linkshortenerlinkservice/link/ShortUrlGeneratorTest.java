@@ -1,7 +1,6 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
 import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ShortUrlGeneratorTest {

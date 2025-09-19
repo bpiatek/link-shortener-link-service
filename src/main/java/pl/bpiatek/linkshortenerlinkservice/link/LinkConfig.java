@@ -1,9 +1,13 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
+import pl.bpiatek.contracts.link.LinkLifecycleEventProto;
 
 import java.time.Clock;
 import java.util.List;
@@ -32,6 +36,19 @@ class LinkConfig {
     }
 
     @Bean
+    KafkaProducerService kafkaProducerService(
+            @Value("${topic.link.lifecycle}") String topicName,
+            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate,
+            MeterRegistry meterRegistry) {
+        return new KafkaProducerService(topicName, kafkaTemplate, meterRegistry);
+    }
+
+    @Bean
+    KafkaIntegrationEvents kafkaIntegrationEvents(KafkaProducerService kafkaProducerService) {
+        return new KafkaIntegrationEvents(kafkaProducerService);
+    }
+
+    @Bean
     RandomShortUrlCreationStrategy randomCodeCreationStrategy(LinkRepository linkRepository,
                                                               LinkMapper linkMapper,
                                                               ShortUrlGenerator shortUrlGenerator) {
@@ -39,7 +56,7 @@ class LinkConfig {
     }
 
     @Bean
-    LinkFacade linkFacade(List<LinkCreationStrategy> strategyList) {
-        return new LinkFacade(strategyList);
+    LinkFacade linkFacade(List<LinkCreationStrategy> strategyList, ApplicationEventPublisher eventPublisher) {
+        return new LinkFacade(strategyList, eventPublisher);
     }
 }

@@ -33,6 +33,10 @@
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
         <testcontainers-bom.version>1.21.3</testcontainers-bom.version>
         <commons-validator.version>1.10.0</commons-validator.version>
+        <link-shortener-contracts.version>0.0.1</link-shortener-contracts.version>
+        <confluent.version>8.0.0</confluent.version>
+        <kafka-contracts.version>1.0.0</kafka-contracts.version>
+        <archunit-junit5.version>1.4.1</archunit-junit5.version>
     </properties>
     <dependencies>
         <dependency>
@@ -93,6 +97,37 @@
             <version>${commons-validator.version}</version>
         </dependency>
 
+        <!-- Kafka -->
+        <dependency>
+            <groupId>pl.bpiatek</groupId>
+            <artifactId>link-shortener-contracts</artifactId>
+            <version>${link-shortener-contracts.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>pl.bpiatek</groupId>
+            <artifactId>kafka-contracts</artifactId>
+            <version>${kafka-contracts.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-protobuf-serializer</artifactId>
+            <version>${confluent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-registry-client</artifactId>
+            <version>${confluent.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-serializer</artifactId>
+            <version>${confluent.version}</version>
+        </dependency>
+
         <!-- Database -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -141,6 +176,17 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>redpanda</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit-junit5.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

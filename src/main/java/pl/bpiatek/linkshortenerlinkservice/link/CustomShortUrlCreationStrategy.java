@@ -1,10 +1,11 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 import pl.bpiatek.linkshortenerlinkservice.exception.ShortCodeAlreadyExistsException;
 
-class CustomShortUrlCreationStrategy implements  LinkCreationStrategy {
+class CustomShortUrlCreationStrategy implements LinkCreationStrategy {
 
     private final LinkRepository linkRepository;
     private final LinkMapper linkMapper;
@@ -15,10 +16,13 @@ class CustomShortUrlCreationStrategy implements  LinkCreationStrategy {
     }
 
     @Override
-    public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl) {
+    public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, ApplicationEventPublisher eventPublisher) {
         try {
             var linkToSave = linkMapper.toLink(userId, longUrl, shortUrl);
             var savedLink = linkRepository.save(linkToSave);
+
+            eventPublisher.publishEvent(new LinkCreatedApplicationEvent(savedLink));
+
             return linkMapper.toCreateLinkResponse(savedLink);
         } catch (DataIntegrityViolationException e) {
             throw new ShortCodeAlreadyExistsException(shortUrl);

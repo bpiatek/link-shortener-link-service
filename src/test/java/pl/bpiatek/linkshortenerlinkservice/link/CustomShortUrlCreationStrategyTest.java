@@ -4,8 +4,10 @@ package pl.bpiatek.linkshortenerlinkservice.link;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import pl.bpiatek.linkshortenerlinkservice.exception.ShortCodeAlreadyExistsException;
 
@@ -32,6 +34,9 @@ class CustomShortUrlCreationStrategyTest {
     @Mock
     private LinkMapper linkMapper;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private CustomShortUrlCreationStrategy strategy;
 
     @BeforeEach
@@ -43,13 +48,16 @@ class CustomShortUrlCreationStrategyTest {
     void shouldSucceedCreatingLink() {
         // given
         var customShortUrl = "test-url";
-        givenSuccessfulSave(customShortUrl);
+        var savedLink = givenSuccessfulSave(customShortUrl);
 
         // when
-        var actualResponse = strategy.createLink(USER_ID, LONG_URL, customShortUrl);
+        var actualResponse = strategy.createLink(USER_ID, LONG_URL, customShortUrl, eventPublisher);
 
         // then
         assertThat(actualResponse.shortUrl()).contains(customShortUrl);
+        var eventCaptor = ArgumentCaptor.forClass(LinkCreatedApplicationEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().link()).isEqualTo(savedLink);
     }
 
     @Test
@@ -59,12 +67,12 @@ class CustomShortUrlCreationStrategyTest {
         givenCollisionOnSave(customShortUrl);
 
         // then
-        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, customShortUrl))
+        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, customShortUrl, eventPublisher))
                 .isInstanceOf(ShortCodeAlreadyExistsException.class);
         verify(linkRepository).save(any(Link.class));
     }
 
-    private void givenSuccessfulSave(String uniqueShortUrl) {
+    private Link givenSuccessfulSave(String uniqueShortUrl) {
         var linkToSave = aLinkWithShortUrl(uniqueShortUrl);
         var savedLink = aSavedLinkWithShortUrl(1L, uniqueShortUrl);
         var response = aCreateLinkResponseWithShortUrl(uniqueShortUrl);
@@ -72,6 +80,8 @@ class CustomShortUrlCreationStrategyTest {
         given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl))).willReturn(linkToSave);
         given(linkRepository.save(linkToSave)).willReturn(savedLink);
         given(linkMapper.toCreateLinkResponse(savedLink)).willReturn(response);
+
+        return savedLink;
     }
 
     private void givenCollisionOnSave(String collidingShortUrl) {
