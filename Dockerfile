@@ -1,35 +1,49 @@
 # ===================================================================================
-# STAGE 1: The "Builder" Stage
+# STAGE 1: Dependencies (cacheable, no secrets)
+# ===================================================================================
+FROM eclipse-temurin:21-jdk-jammy AS deps
+
+WORKDIR /app
+
+# Copy only files needed to resolve dependencies
+COPY .mvn/ .mvn
+COPY mvnw pom.xml ./
+
+# Warm up Maven cache (cacheable, no secrets here)
+RUN --mount=type=cache,target=/root/.m2 \
+    ./mvnw dependency:go-offline
+
+
+# ===================================================================================
+# STAGE 2: Builder (uses secrets, but reuses deps cache)
 # ===================================================================================
 FROM eclipse-temurin:21-jdk-jammy AS builder
 
 WORKDIR /app
 
-# Copy only the files needed to download dependencies
-COPY .mvn/ .mvn
-COPY mvnw pom.xml ./
+# Copy Maven cache from deps stage
+COPY --from=deps /root/.m2 /root/.m2
+COPY . .
 
+# Build application (this step uses secret)
 RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
     --mount=type=cache,target=/root/.m2 \
-    ./mvnw dependency:go-offline --global-settings /root/.m2/settings.xml
+    ./mvnw package -DskipTests --global-settings /root/.m2/settings.xml
 
-# Copy the rest of the source code
-COPY src ./src
-
-RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
-    --mount=type=cache,target=/root/.m2 \
-    ./mvnw dependency:go-offline --global-settings /root/.m2/settings.xml
 
 # ===================================================================================
-# STAGE 2: The "Extractor"
+# STAGE 3: Extractor (unpacks layered jar)
 # ===================================================================================
 FROM builder AS extractor
+
+WORKDIR /app
 
 COPY --from=builder /app/target/*.jar application.jar
 RUN java -Djarmode=layertools -jar application.jar extract
 
+
 # ===================================================================================
-# STAGE 3: The Final Image
+# STAGE 4: Final runtime image
 # ===================================================================================
 FROM eclipse-temurin:21-jre-jammy AS final
 
