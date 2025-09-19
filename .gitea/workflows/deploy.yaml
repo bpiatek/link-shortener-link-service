@@ -26,6 +26,12 @@ jobs:
           id
           groups
 
+      - name: Check Runner Resources
+        run: |
+          free -m
+          df -h
+          top -bn1 | head -n 10
+
       - name: Test Repository Connectivity
         run: |
           curl -v https://repo.bpiatek.pl/releases || echo "Public access to Reposilite failed (expected if auth required)"
@@ -49,7 +55,12 @@ jobs:
               </servers>
             </settings>" > "$SETTINGS_FILE"
           echo "Maven settings.xml for Docker created at $SETTINGS_FILE"
-          cat "$SETTINGS_FILE" # Debug: Verify settings.xml content
+          cat "$SETTINGS_FILE"
+
+      - name: Test Maven Dependency Resolution
+        run: |
+          mvn --settings settings.xml dependency:resolve -X | tee maven-log.txt
+          echo "Maven dependency resolution logs saved to maven-log.txt"
 
       - name: Get Image Tag
         id: get_tag
@@ -70,8 +81,10 @@ jobs:
           docker build \
             --network host \
             --secret id=maven-settings,src=settings.xml \
-            -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} .
-          echo "Docker image built: ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }}"
+            -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} . \
+            | tee docker-build.log
+          echo "Docker build logs saved to docker-build.log"
+          cat docker-build.log
 
       - name: Clean up Maven settings.xml
         run: |
