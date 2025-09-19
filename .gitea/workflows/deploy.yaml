@@ -26,6 +26,11 @@ jobs:
           id
           groups
 
+      - name: Check Docker Version
+        run: |
+          docker --version
+          docker buildx version
+
       - name: Check Runner Resources
         run: |
           free -m
@@ -81,7 +86,6 @@ jobs:
           docker build \
             --network host \
             --memory 2g \
-            --cpus 2 \
             --secret id=maven-settings,src=settings.xml \
             -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} . \
             | tee docker-build.log
