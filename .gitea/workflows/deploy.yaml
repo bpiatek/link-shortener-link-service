@@ -92,6 +92,11 @@ jobs:
           echo "Docker build logs saved to docker-build.log"
           cat docker-build.log
 
+      - name: Check Docker Daemon Logs
+        if: always()
+        run: |
+          journalctl -u docker -n 100 --no-pager
+
       - name: Clean up Maven settings.xml
         run: |
           rm settings.xml
