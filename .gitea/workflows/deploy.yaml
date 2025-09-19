@@ -26,9 +26,6 @@ jobs:
           id
           groups
 
-      - name: Package with Maven
-        run: mvn clean package -DskipTests
-
       - name: Create Maven settings.xml for Docker build
         run: |
           SETTINGS_FILE="settings.xml"
