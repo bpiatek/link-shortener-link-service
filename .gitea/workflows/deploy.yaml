@@ -37,6 +37,11 @@ jobs:
           df -h
           top -bn1 | head -n 10
 
+      - name: Print Runner Environment
+        run: |
+          env
+          ls -l .
+
       - name: Test Repository Connectivity
         run: |
           curl -v https://repo.bpiatek.pl/releases || echo "Public access to Reposilite failed (expected if auth required)"
