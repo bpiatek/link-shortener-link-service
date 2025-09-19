@@ -32,6 +32,7 @@
         <spring-cloud.version>2025.0.0</spring-cloud.version>
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
         <testcontainers-bom.version>1.21.3</testcontainers-bom.version>
+        <commons-validator.version>1.10.0</commons-validator.version>
     </properties>
     <dependencies>
         <dependency>
@@ -85,6 +86,11 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>commons-validator</groupId>
+            <artifactId>commons-validator</artifactId>
+            <version>${commons-validator.version}</version>
         </dependency>
 
         <!-- Database -->

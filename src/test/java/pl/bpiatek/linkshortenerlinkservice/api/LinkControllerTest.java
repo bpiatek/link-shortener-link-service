@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkRequest;
@@ -36,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class LinkControllerTest {
 
     private static final String LONG_URL = "https://example.com/long";
+    private static final String USER_ID = "123";
 
     @Autowired
     private MockMvc mockMvc;
@@ -50,15 +50,14 @@ class LinkControllerTest {
     void shouldCreateLinkAndReturn201CreatedWhenRequestIsValid() throws Exception {
         // given
         var request = new CreateLinkRequest(LONG_URL, "my-custom-code");
-        var userId = "user-123";
 
         var facadeResponse = new CreateLinkResponse("https://apidev.bpiatek.pl/my-custom-code", LONG_URL);
-        when(linkFacade.createLink(userId, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
                 .thenReturn(facadeResponse);
 
         // when
         mockMvc.perform(post("/links")
-                        .header("X-User-Id", userId)
+                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -67,25 +66,24 @@ class LinkControllerTest {
                 .andExpect(jsonPath("$.longUrl", is(facadeResponse.longUrl())));
 
         // then
-        verify(linkFacade).createLink(userId, request.longUrl(), request.shortUrl());
+        verify(linkFacade).createLink(USER_ID, request.longUrl(), request.shortUrl());
     }
 
     @Test
     void shouldReturn400BadRequestWhileCreatingLinkWhenLongUrlIsInvalid() throws Exception {
         // given
         var request = new CreateLinkRequest("invalid-url", null);
-        var userId = "user-123";
 
         // then
         mockMvc.perform(post("/links")
-                        .header("X-User-Id", userId)
+                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void shouldReturn403ForbiddenWhileCreatingLinkWhenUserIdHeaderIsMissing() throws Exception {
+    void shouldReturn403ForbiddenWhileCreatingLinkWhenUSER_IDHeaderIsMissing() throws Exception {
         // given
         var request = new CreateLinkRequest(LONG_URL, null);
 
@@ -101,11 +99,10 @@ class LinkControllerTest {
     void shouldReturn400BadRequestWhileCreatingLinkWhenLongUrlIsBlank() throws Exception {
         // given
         var request = new CreateLinkRequest("", null);
-        var userId = "user-123";
 
         // then
         mockMvc.perform(post("/links")
-                        .header("X-User-Id", userId)
+                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
@@ -119,14 +116,13 @@ class LinkControllerTest {
         // given
         var shortUrl = "already-taken";
         var request = new CreateLinkRequest(LONG_URL, shortUrl);
-        var userId = "user-123";
 
-        when(linkFacade.createLink(userId, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
                 .thenThrow(new ShortCodeAlreadyExistsException(shortUrl));
 
         // then
         mockMvc.perform(post("/links")
-                        .header("X-User-Id", userId)
+                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -138,11 +134,10 @@ class LinkControllerTest {
     void shouldReturn415UnsupportedMediaTypeWhileCreatingLinkWhenContentTypeIsNotApplicationJson() throws Exception {
         // given
         var request = new CreateLinkRequest(LONG_URL, "my-code");
-        var userId = "user-123";
 
         // then
         mockMvc.perform(post("/links")
-                        .header("X-User-Id", userId)
+                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.TEXT_PLAIN) // Incorrect content type
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnsupportedMediaType());
@@ -152,14 +147,13 @@ class LinkControllerTest {
     void shouldReturn503ServiceUnavailableWhileCreatingLinkWhenFacadeThrowsUnableToGenerateUniqueShortUrlException() throws Exception {
         // given
         var request = new CreateLinkRequest(LONG_URL, null);
-        var userId = "user-123";
 
-        when(linkFacade.createLink(userId, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
                 .thenThrow(new UnableToGenerateUniqueShortUrlException(5));
 
         // then
         mockMvc.perform(post("/links")
-                        .header("X-User-Id", userId)
+                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isServiceUnavailable())
@@ -170,21 +164,62 @@ class LinkControllerTest {
 
     @Test
     void shouldReturn500InternalServerErrorWhileCreatingLinkWhenFacadeThrowsUnexpectedException() throws Exception {
-        // given: A valid request.
+        // given
         var request = new CreateLinkRequest(LONG_URL, "my-code");
-        var userId = "user-123";
 
-        when(linkFacade.createLink(userId, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
                 .thenThrow(new RuntimeException("A critical database error occurred!"));
 
         // then
         mockMvc.perform(post("/links")
-                        .header("X-User-Id", userId)
+                        .header("X-User-Id", USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.title", is("Internal Server Error")))
                 .andExpect(jsonPath("$.detail", is("An unexpected error occurred.")));
+    }
+
+    @Test
+    void shouldReturn400BadRequestWhileCreatingLinkWhenRequestBodyIsMissing() throws Exception {
+        // given
+        mockMvc.perform(post("/links")
+                        .header("X-User-Id", USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON))
+                // .content()  no content
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title", is("Malformed Request")))
+                .andExpect(jsonPath("$.detail", is("The request body is missing or cannot be parsed.")));
+    }
+
+    @Test
+    void shouldReturn400BadRequestWhileCreatingLinkWhenRequestBodyIsMalformedJson() throws Exception {
+        // given
+        var malformedJson = "{\"longUrl\": \"https://example.com\", }"; // Extra comma makes it invalid
+
+        // then
+        mockMvc.perform(post("/links")
+                        .header("X-User-Id", USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(malformedJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title", is("Malformed Request")))
+                .andExpect(jsonPath("$.detail", is("The request body is missing or cannot be parsed.")));
+    }
+
+    @Test
+    void shouldReturn400BadRequestWhileCreatingLinkWhenLongLinkIsNotCorrectlyFormatted() throws Exception {
+        var request = new CreateLinkRequest("https:// example.com", "my-code");
+
+        // then
+        mockMvc.perform(post("/links")
+                        .header("X-User-Id", USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title", is("Validation Failed")))
+                .andExpect(jsonPath("$.errors[0].message", is("A valid URL format is required.")))
+                .andExpect(jsonPath("$.errors[0].field", is("longUrl")));
     }
 
     @TestConfiguration

@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
+import static org.springframework.http.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -105,13 +107,32 @@ class GlobalExceptionHandler {
                 clock.instant(),
                 "/errors/unsupported-media-type",
                 "Unsupported Media Type",
-                HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(),
+                UNSUPPORTED_MEDIA_TYPE.value(),
                 message,
                 request.getRequestURI(),
                 null
         );
 
-        return new ResponseEntity<>(apiError, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        return new ResponseEntity<>(apiError, UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiError> handleMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+
+        log.warn("Malformed request: {}", ex.getMessage());
+
+        ApiError apiError = new ApiError(
+                clock.instant(),
+                "/errors/malformed-request",
+                "Malformed Request",
+                BAD_REQUEST.value(),
+                "The request body is missing or cannot be parsed.",
+                request.getRequestURI(),
+                null
+        );
+
+        return new ResponseEntity<>(apiError, BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
