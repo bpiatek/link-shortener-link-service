@@ -30,6 +30,11 @@ class LinkFacadeTest {
     @ServiceConnection
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
+    @Container
+    @ServiceConnection
+    static final RedpandaContainer redpandaContainer =
+            new RedpandaContainer(DockerImageName.parse("docker.redpanda.com/redpandadata/redpanda:v24.1.4"));
+
     @Autowired
     LinkFacade linkFacade;
 

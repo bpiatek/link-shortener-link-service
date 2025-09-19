@@ -29,6 +29,26 @@ jobs:
       - name: Package with Maven
         run: mvn clean package -DskipTests
 
+      - name: Create Maven settings.xml for Docker build
+        run: |
+          SETTINGS_FILE="${{ runner.temp }}/settings.xml"
+          
+          echo "<settings xmlns='http://maven.apache.org/SETTINGS/1.0.0'
+                xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+                xsi:schemaLocation='http://maven.apache.org/SETTINGS/1.0.0
+                                    https://maven.apache.org/xsd/settings-1.0.0.xsd'>
+              <servers>
+                <server>
+                  <id>reposilite</id>
+                  <username>${{ secrets.REPOSILITE_USERNAME }}</username>
+                  <password>${{ secrets.REPOSILITE_PASSWORD }}</password>
+                </server>
+              </servers>
+            </settings>" > "$SETTINGS_FILE"
+          
+          echo "MAVEN_SETTINGS_PATH=$SETTINGS_FILE" >> $GITHUB_ENV
+          echo "✅ Maven settings.xml created for Reposilite."
+
       - name: Get Image Tag
         id: get_tag
         run: |
@@ -45,7 +65,9 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} .
+          docker build \
+            --secret id=maven-settings,src=${{ steps.maven_settings.outputs.path }} \
+            -t ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }} .
           echo "Docker image built: ${{ steps.image_name.outputs.name }}:${{ steps.get_tag.outputs.tag }}"
 
       - name: Verify microk8s availability and version

@@ -1,7 +1,5 @@
 # ===================================================================================
 # STAGE 1: The "Builder" Stage
-# - Uses a full JDK and Maven to build the application.
-# - This stage will be discarded and not included in the final image.
 # ===================================================================================
 FROM eclipse-temurin:21-jdk-jammy as builder
 
@@ -11,47 +9,33 @@ WORKDIR /app
 COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
 
-# Download dependencies into a separate, cached layer
-# This layer only changes if you modify pom.xml
-RUN ./mvnw dependency:resolve
+RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
+    ./mvnw dependency:resolve --global-settings /root/.m2/settings.xml
 
 # Copy the rest of the source code
 COPY src ./src
 
-# Build the application JAR
-# This layer only changes if your source code changes
-RUN ./mvnw package -DskipTests
-
+RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
+    ./mvnw package -DskipTests --global-settings /root/.m2/settings.xml
 
 # ===================================================================================
-# STAGE 2: The "Extractor" Stage
-# - Extracts the layers from the JAR file created by the builder.
+# STAGE 2: The "Extractor" Stage (NO CHANGES NEEDED)
 # ===================================================================================
 FROM builder as extractor
 
-# Copy the JAR from the builder stage
 COPY --from=builder /app/target/*.jar application.jar
-
-# Use Spring Boot's layertools to extract the application into separate layers
-# This creates folders like /dependencies, /spring-boot-loader, /application, etc.
 RUN java -Djarmode=layertools -jar application.jar extract
 
-
 # ===================================================================================
-# STAGE 3: The Final Image
-# - Uses a minimal Java Runtime Environment (JRE), not a full JDK.
-# - Copies the extracted layers in the correct order for optimal caching.
+# STAGE 3: The Final Image (NO CHANGES NEEDED)
 # ===================================================================================
 FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
-# Copy the layers from the extractor stage in order of least to most frequently changing
 COPY --from=extractor /app/dependencies/ ./
 COPY --from=extractor /app/spring-boot-loader/ ./
 COPY --from=extractor /app/snapshot-dependencies/ ./
 COPY --from=extractor /app/application/ ./
 
-# The entrypoint is different now. We use the JarLauncher which knows
-# how to run the application from the exploded directory structure.
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
