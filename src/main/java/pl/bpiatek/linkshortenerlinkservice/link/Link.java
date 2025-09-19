@@ -24,4 +24,8 @@ record Link(
     Link(String userId, String shortUrl, String longUrl) {
         this(null, userId, shortUrl, longUrl, null, null, false, null, null, null);
     }
+
+    static Link empty() {
+        return new Link(null, null, null, null, null, null, false, null, null, null);
+    }
 }

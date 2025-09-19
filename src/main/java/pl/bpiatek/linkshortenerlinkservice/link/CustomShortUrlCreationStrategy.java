@@ -14,7 +14,6 @@ class CustomShortUrlCreationStrategy implements  LinkCreationStrategy {
         this.linkMapper = linkMapper;
     }
 
-
     @Override
     public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl) {
         try {

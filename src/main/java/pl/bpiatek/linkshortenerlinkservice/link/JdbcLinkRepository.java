@@ -7,9 +7,11 @@ import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
 import static java.time.temporal.ChronoUnit.DAYS;
 
@@ -31,17 +33,16 @@ class JdbcLinkRepository implements LinkRepository {
     public Link save(Link link) {
         var now = clock.instant();
 
-        Map<String, Object> params = Map.of(
-                "user_id", link.userId(),
-                "short_url", link.shortUrl(),
-                "long_url", link.longUrl(),
-                "title", link.title(),
-                "notes", link.notes(),
-                "is_active", link.isActive(),
-                "created_at", providedDateOr(link.createdAt(), now),
-                "updated_at", providedDateOr(link.updatedAt(), now),
-                "expires_at", providedDateOr(link.expiresAt(), now.plus(7, DAYS))
-        );
+        var params = new HashMap<String, Object>();
+        params.put("user_id", link.userId());
+        params.put("short_url", link.shortUrl());
+        params.put("long_url", link.longUrl());
+        params.put("title", link.title());
+        params.put("notes", link.notes());
+        params.put("is_active", link.isActive());
+        params.put("created_at", providedDateOr(link.createdAt(), now));
+        params.put("updated_at", providedDateOr(link.updatedAt(), now));
+        params.put("expires_at", providedDateOr(link.expiresAt(), now.plus(7, DAYS)));
 
         var key = linkInsert.executeAndReturnKey(params);
         long generatedId = key.longValue();

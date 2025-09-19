@@ -31,7 +31,7 @@ class LinkFixtures {
                 .usingGeneratedKeyColumns("id");
     }
 
-    Link createLink(TestLink link) {
+    Link aLink(TestLink link) {
         var now = clock.instant();
 
         Map<String, Object> params = Map.of(
@@ -50,6 +50,17 @@ class LinkFixtures {
         long generatedId = key.longValue();
 
         return getLinkById(generatedId);
+    }
+
+    Integer linksCountByShortUrl(String shortUrl) {
+        return namedJdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM links l WHERE l.short_url = :shortUrl",
+                Map.of("shortUrl", shortUrl),
+                Integer.class);
+    }
+
+    Integer linksCountByUserId(String userId) {
+        return namedJdbcTemplate.queryForObject("SELECT COUNT(*) FROM links WHERE user_id = :userId", Map.of("userId", userId), Integer.class);
     }
 
     private Link getLinkById(Long id) {

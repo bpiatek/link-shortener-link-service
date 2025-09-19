@@ -4,7 +4,7 @@ import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 
 class LinkMapper {
 
-    private String baseLinkUrl;
+    private final String baseLinkUrl;
 
     LinkMapper(String baseLinkUrl) {
         this.baseLinkUrl = baseLinkUrl;

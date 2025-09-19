@@ -8,6 +8,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -91,7 +92,7 @@ class JdbcLinkRepositoryTest {
     @Test
     void shouldFindLinkByShortUrl() {
         // given
-        var link = linkFixtures.createLink(TestLink.builder()
+        var link = linkFixtures.aLink(TestLink.builder()
                 .shortUrl("edt2w")
                 .longUrl("https://www.example.com/longlink")
                 .build());
@@ -119,7 +120,7 @@ class JdbcLinkRepositoryTest {
     @Test
     void shouldFindLinkByUserId() {
         // given
-        var link = linkFixtures.createLink(TestLink.builder()
+        var link = linkFixtures.aLink(TestLink.builder()
                 .userId("1")
                 .build());
 
@@ -134,13 +135,13 @@ class JdbcLinkRepositoryTest {
     @Test
     void shouldFindAllLinksByUserId() {
         // given
-        var link1 = linkFixtures.createLink(TestLink.builder()
+        var link1 = linkFixtures.aLink(TestLink.builder()
                 .userId("1")
                 .longUrl("https://www.example.com/longlink")
                 .shortUrl("edt2w")
                 .build());
 
-        var link2 = linkFixtures.createLink(TestLink.builder()
+        var link2 = linkFixtures.aLink(TestLink.builder()
                 .userId("1")
                 .longUrl("https://www.example.com/longlink2")
                 .shortUrl("n2ut8")
