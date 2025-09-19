@@ -5,13 +5,13 @@ FROM eclipse-temurin:21-jdk-jammy AS deps
 
 WORKDIR /app
 
-# Copy only files needed to resolve dependencies
+# Copy only the files needed to resolve dependencies
 COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
 
-# Warm up Maven cache (cacheable, no secrets here)
+# Warm up Maven cache using default settings.xml (no secrets required here)
 RUN --mount=type=cache,target=/root/.m2 \
-    ./mvnw dependency:go-offline
+    ./mvnw dependency:go-offline -s /usr/share/maven/conf/settings.xml
 
 
 # ===================================================================================
@@ -25,7 +25,7 @@ WORKDIR /app
 COPY --from=deps /root/.m2 /root/.m2
 COPY . .
 
-# Build application (this step uses secret)
+# Build application with secret settings.xml (for private repositories)
 RUN --mount=type=secret,id=maven-settings,target=/root/.m2/settings.xml \
     --mount=type=cache,target=/root/.m2 \
     ./mvnw package -DskipTests --global-settings /root/.m2/settings.xml
