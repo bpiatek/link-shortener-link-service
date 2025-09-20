@@ -4,36 +4,23 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.redpanda.RedpandaContainer;
-import org.testcontainers.utility.DockerImageName;
-import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
+import pl.bpiatek.linkshortenerlinkservice.config.WithFullInfrastructure;
 
-import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
+import static java.nio.charset.StandardCharsets.*;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
 @SpringBootTest
-@Testcontainers
 @ActiveProfiles("test")
-class LinkFacadeKafkaIT {
+class LinkFacadeKafkaIT implements WithFullInfrastructure {
 
-    @Container
-    @ServiceConnection
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
-
-    @Container
-    @ServiceConnection
-    static final RedpandaContainer redpandaContainer =
-            new RedpandaContainer(DockerImageName.parse("docker.redpanda.com/redpandadata/redpanda:v24.1.4"));
+    private static final String LONG_URL = "https://example.com/long";
+    private static final String USER_ID = "123";
 
     @DynamicPropertySource
     static void kafkaProperties(DynamicPropertyRegistry registry) {
@@ -64,42 +51,32 @@ class LinkFacadeKafkaIT {
     @Test
     void shouldPersistToDatabaseAndPublishKafkaEvent() throws InterruptedException {
         // given
-        var userId = "user-123";
-        var longUrl = "https://example.com/full-integration-test";
         var customCode = "integ-test";
 
         // when
-        var response = linkFacade.createLink(userId, longUrl, customCode);
-        var record = testConsumer.awaitRecord(10, TimeUnit.SECONDS);
+        linkFacade.createLink(USER_ID, LONG_URL, customCode);
 
         // then
+        var record = testConsumer.awaitRecord(10, TimeUnit.SECONDS);
         assertSoftly(softly -> {
-            // 1. Verify the database was updated correctly.
-            Integer dbCount = linkFixtures.linksCountByShortUrl(customCode);
-            softly.assertThat(dbCount).as("Database link count").isEqualTo(1);
+            var linksCountByShortUrl = linkFixtures.linksCountByShortUrl(customCode);
+            softly.assertThat(linksCountByShortUrl).isOne();
 
-            // 2. Verify the Kafka message is not null.
-            softly.assertThat(record).as("Consumed Kafka record").isNotNull();
-
-            // 3. Verify the Kafka message key.
-            // We need to get the ID from the DB to confirm the key is correct.
+            softly.assertThat(record).isNotNull();
             var linkFromDb = linkFixtures.getLinkByShortUrl(customCode);
-            softly.assertThat(record.key()).as("Kafka message key").isEqualTo(String.valueOf(linkFromDb.id()));
+            softly.assertThat(record.key()).isEqualTo(linkFromDb.id().toString());
 
-            // 4. Verify the Kafka message payload (the Protobuf object).
             var message = record.value();
-            softly.assertThat(message.hasLinkCreated()).as("Event is of type LinkCreated").isTrue();
+            softly.assertThat(message.hasLinkCreated()).isTrue();
             var createdPayload = message.getLinkCreated();
-            softly.assertThat(createdPayload.getLinkId()).isEqualTo(String.valueOf(linkFromDb.id()));
-            softly.assertThat(createdPayload.getUserId()).isEqualTo(userId);
+            softly.assertThat(createdPayload.getLinkId()).isEqualTo(linkFromDb.id().toString());
+            softly.assertThat(createdPayload.getUserId()).isEqualTo(USER_ID);
             softly.assertThat(createdPayload.getShortUrl()).isEqualTo(customCode);
-            softly.assertThat(createdPayload.getLongUrl()).isEqualTo(longUrl);
+            softly.assertThat(createdPayload.getLongUrl()).isEqualTo(LONG_URL);
 
-            // 5. Verify the Kafka message headers.
             var headers = record.headers();
-            softly.assertThat(new String(headers.lastHeader("source").value(), StandardCharsets.UTF_8))
-                    .as("Kafka 'source' header").isEqualTo("link-service");
-            softly.assertThat(headers.lastHeader("trace-id").value()).as("Kafka 'trace-id' header").isNotNull();
+            softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");
+            softly.assertThat(headers.lastHeader("trace-id").value()).isNotNull();
         });
     }
 }

@@ -5,38 +5,24 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.redpanda.RedpandaContainer;
-import org.testcontainers.utility.DockerImageName;
+import pl.bpiatek.linkshortenerlinkservice.config.WithFullInfrastructure;
 import pl.bpiatek.linkshortenerlinkservice.exception.ShortCodeAlreadyExistsException;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-@Testcontainers
 @ActiveProfiles("test")
 @SpringBootTest
-class LinkFacadeTest {
+class LinkFacadeTest implements WithFullInfrastructure {
 
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
 
-    @Container
-    @ServiceConnection
-    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
-
-    @Container
-    @ServiceConnection
-    static final RedpandaContainer redpandaContainer =
-            new RedpandaContainer(DockerImageName.parse("docker.redpanda.com/redpandadata/redpanda:v24.1.4"));
 
     @Autowired
-    LinkFacade linkFacade;
+    private LinkFacade linkFacade;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -46,7 +32,6 @@ class LinkFacadeTest {
 
     @AfterEach
     void cleanup() {
-        // Clean up the database after each test to ensure isolation.
         jdbcTemplate.update("DELETE FROM links");
     }
 

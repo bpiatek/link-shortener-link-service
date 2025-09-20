@@ -6,7 +6,7 @@ FROM eclipse-temurin:21-jdk-jammy AS builder
 
 WORKDIR /app
 
-# FIX: Explicitly create the .m2 directory so that Docker's mount command
+# Explicitly create the .m2 directory so that Docker's mount command
 # has a valid target path to mount the cache volume onto.
 RUN mkdir -p /root/.m2
 

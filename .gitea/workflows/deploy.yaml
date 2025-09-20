@@ -17,7 +17,6 @@ jobs:
     name: Build and Deploy to ${{ github.event.inputs.environment }}
     runs-on: java21-build
     env:
-      # Enable Docker BuildKit, which is required for secret and cache mounts.
       DOCKER_BUILDKIT: 1
 
     steps:
@@ -39,7 +38,7 @@ jobs:
                 </server>
               </servers>
             </settings>" > "$SETTINGS_FILE"
-          echo "✅ Maven settings.xml for Docker created."
+          echo "Maven settings.xml for Docker created."
 
       - name: Get Image Tag and Name
         id: image_info
@@ -52,18 +51,18 @@ jobs:
           docker build \
             --secret id=maven-settings,src=settings.xml \
             -t ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }} .
-          echo "✅ Docker image built: ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }}"
+          echo "Docker image built: ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }}"
 
       - name: Clean up Maven settings.xml
-        if: always() # This step runs even if the build fails, for security.
+        if: always()
         run: |
           rm settings.xml
-          echo "✅ Cleaned up temporary settings.xml"
+          echo "Cleaned up temporary settings.xml"
 
       - name: Import Image into MicroK8s
         run: |
           docker save ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }} | sudo /snap/bin/microk8s ctr image import -
-          echo "✅ Image imported into MicroK8s."
+          echo "Image imported into MicroK8s."
 
       - name: Run Helm Upgrade
         run: |
@@ -77,4 +76,4 @@ jobs:
             --set image.repository=${{ steps.image_info.outputs.name }} \
             --set image.tag=${{ steps.image_info.outputs.tag }} \
             --set spring.profiles.active=${{ github.event.inputs.environment }}
-          echo "✅ Helm deployment finished."
+          echo "Helm deployment finished."

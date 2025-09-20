@@ -6,8 +6,13 @@ class LinkStubs {
 
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
+    private static final String SHORT_URL = "3ehnsT8";
 
     private LinkStubs() {
+    }
+
+    static Link aLink() {
+        return  new Link(1L, USER_ID, SHORT_URL, LONG_URL, null, null, true, null, null, null);
     }
 
     static Link aLinkWithShortUrl(String shortUrl) {
@@ -23,6 +28,6 @@ class LinkStubs {
     }
 
     static CreateLinkResponse aCreateLinkResponseWithLongUrl(String longUrl) {
-        return new CreateLinkResponse("http://base.url/24341", longUrl);
+        return new CreateLinkResponse(SHORT_URL, longUrl);
     }
 }
