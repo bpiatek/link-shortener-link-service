@@ -15,6 +15,7 @@ import pl.bpiatek.linkshortenerlinkservice.exception.UnableToGenerateUniqueShort
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -50,7 +51,6 @@ class RandomShortUrlCreationStrategyTest {
     }
 
     @Test
-    @DisplayName("should succeed on the first attempt when the short url is unique")
     void shouldSucceedOnFirstAttempt() {
         // given
         var uniqueShortUrl = "abc1234";
@@ -58,7 +58,7 @@ class RandomShortUrlCreationStrategyTest {
         var savedLink = givenSuccessfulSave(uniqueShortUrl);
 
         // when
-        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, eventPublisher);
+        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, true, eventPublisher);
 
         // then
         assertThat(actualResponse.shortUrl()).contains(uniqueShortUrl);
@@ -70,7 +70,6 @@ class RandomShortUrlCreationStrategyTest {
     }
 
     @Test
-    @DisplayName("should retry and succeed when the first generated shortUrl collides")
     void shouldRetryAndSucceedOnCollision() {
         var collidingShortUrl = "colliding";
         var uniqueShortUrl = "unique123";
@@ -80,7 +79,7 @@ class RandomShortUrlCreationStrategyTest {
         givenSuccessfulSave(uniqueShortUrl);
 
         // when
-        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, eventPublisher);
+        var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, true, eventPublisher);
 
         // then:
         assertThat(actualResponse.shortUrl()).contains(uniqueShortUrl);
@@ -89,7 +88,6 @@ class RandomShortUrlCreationStrategyTest {
     }
 
     @Test
-    @DisplayName("should throw UnableToGenerateUniqueShortUrlException after all attempts fail")
     void shouldThrowExceptionWhenAllAttemptsCollide() {
         // given
         var collidingShortUrl = "always-colliding";
@@ -97,7 +95,7 @@ class RandomShortUrlCreationStrategyTest {
         givenCollisionOnSave(collidingShortUrl);
 
         // then
-        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, null, eventPublisher))
+        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, null,false, eventPublisher))
                 .isInstanceOf(UnableToGenerateUniqueShortUrlException.class);
         verify(shortUrlGenerator, times(5)).generate();
         verify(linkRepository, times(5)).save(any(Link.class));
@@ -109,7 +107,7 @@ class RandomShortUrlCreationStrategyTest {
 
     private void givenCollisionOnSave(String collidingShortUrl) {
         var link = aLinkWithShortUrl(collidingShortUrl);
-        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl))).willReturn(link);
+        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl), anyBoolean())).willReturn(link);
         given(linkRepository.save(link)).willThrow(new DataIntegrityViolationException("Collision!"));
     }
 
@@ -118,7 +116,7 @@ class RandomShortUrlCreationStrategyTest {
         var savedLink = aSavedLinkWithShortUrl(1L, uniqueShortUrl);
         var response = aCreateLinkResponseWithShortUrl(uniqueShortUrl);
 
-        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl))).willReturn(linkToSave);
+        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl), anyBoolean())).willReturn(linkToSave);
         given(linkRepository.save(linkToSave)).willReturn(savedLink);
         given(linkMapper.toCreateLinkResponse(savedLink)).willReturn(response);
 

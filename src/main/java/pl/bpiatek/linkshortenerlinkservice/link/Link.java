@@ -1,5 +1,7 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
+import org.springframework.context.ApplicationEventPublisher;
+
 import java.time.Instant;
 
 record Link(
@@ -21,8 +23,8 @@ record Link(
         );
     }
 
-    Link(String userId, String shortUrl, String longUrl) {
-        this(null, userId, shortUrl, longUrl, null, null, false, null, null, null);
+    Link(String userId, String shortUrl, String longUrl, boolean isActive) {
+        this(null, userId, shortUrl, longUrl, null, null, isActive, null, null, null);
     }
 
     static Link empty() {

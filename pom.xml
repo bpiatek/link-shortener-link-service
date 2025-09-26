@@ -33,7 +33,7 @@
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
         <testcontainers-bom.version>1.21.3</testcontainers-bom.version>
         <commons-validator.version>1.10.0</commons-validator.version>
-        <link-shortener-contracts.version>0.0.3</link-shortener-contracts.version>
+        <link-shortener-contracts.version>0.0.5</link-shortener-contracts.version>
         <confluent.version>8.0.0</confluent.version>
         <archunit-junit5.version>1.4.1</archunit-junit5.version>
     </properties>

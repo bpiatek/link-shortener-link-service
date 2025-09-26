@@ -53,7 +53,7 @@ class LinkControllerTest {
         var request = new CreateLinkRequest(LONG_URL, "custom", IS_ACTIVE);
 
         var facadeResponse = new CreateLinkResponse("custom", LONG_URL);
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
                 .thenReturn(facadeResponse);
 
         // when
@@ -67,7 +67,7 @@ class LinkControllerTest {
                 .andExpect(jsonPath("$.longUrl", is(facadeResponse.longUrl())));
 
         // then
-        verify(linkFacade).createLink(USER_ID, request.longUrl(), request.shortUrl());
+        verify(linkFacade).createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive());
     }
 
     @Test
@@ -118,7 +118,7 @@ class LinkControllerTest {
         var shortUrl = "taken";
         var request = new CreateLinkRequest(LONG_URL, shortUrl, IS_ACTIVE);
 
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
                 .thenThrow(new ShortCodeAlreadyExistsException(shortUrl));
 
         // then
@@ -149,7 +149,7 @@ class LinkControllerTest {
         // given
         var request = new CreateLinkRequest(LONG_URL, null, IS_ACTIVE);
 
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
                 .thenThrow(new UnableToGenerateUniqueShortUrlException(5));
 
         // then
@@ -168,7 +168,7 @@ class LinkControllerTest {
         // given
         var request = new CreateLinkRequest(LONG_URL, "my-code", IS_ACTIVE);
 
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
                 .thenThrow(new RuntimeException("A critical database error occurred!"));
 
         // then

@@ -8,6 +8,7 @@ interface LinkCreationStrategy {
             String userId,
             String longUrl,
             String shortUrl,
+            boolean isActive,
             ApplicationEventPublisher applicationEventPublisher);
 
     CreationStrategyType getType();

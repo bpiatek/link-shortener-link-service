@@ -16,9 +16,9 @@ class CustomShortUrlCreationStrategy implements LinkCreationStrategy {
     }
 
     @Override
-    public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, ApplicationEventPublisher eventPublisher) {
+    public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, boolean isActive, ApplicationEventPublisher eventPublisher) {
         try {
-            var linkToSave = linkMapper.toLink(userId, longUrl, shortUrl);
+            var linkToSave = linkMapper.toLink(userId, longUrl, shortUrl, isActive);
             var savedLink = linkRepository.save(linkToSave);
 
             eventPublisher.publishEvent(new LinkCreatedApplicationEvent(savedLink));

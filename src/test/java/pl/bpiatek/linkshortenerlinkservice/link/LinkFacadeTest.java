@@ -1,7 +1,6 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -41,7 +40,7 @@ class LinkFacadeTest implements WithFullInfrastructure {
         var customShortUrl = "test-url";
 
         // when
-        var response = linkFacade.createLink(USER_ID, LONG_URL, customShortUrl);
+        var response = linkFacade.createLink(USER_ID, LONG_URL, customShortUrl, true);
 
         // then:
         var count = linkFixtures.linksCountByShortUrl(customShortUrl);
@@ -65,14 +64,14 @@ class LinkFacadeTest implements WithFullInfrastructure {
                 .build());
 
         // then
-        assertThatThrownBy(() -> linkFacade.createLink(USER_ID, LONG_URL, customShortUrl))
+        assertThatThrownBy(() -> linkFacade.createLink(USER_ID, LONG_URL, customShortUrl, true))
                 .isInstanceOf(ShortCodeAlreadyExistsException.class);
     }
 
     @Test
     void shouldCreateLinkWithRandomShortUrl() {
         // when
-        var response = linkFacade.createLink(USER_ID, LONG_URL, null);
+        var response = linkFacade.createLink(USER_ID, LONG_URL, null, false);
 
         // then
         var count = linkFixtures.linksCountByUserId(USER_ID);

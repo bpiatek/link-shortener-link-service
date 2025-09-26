@@ -26,14 +26,14 @@ public class LinkFacade {
     }
 
     @Transactional
-    public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl) {
+    public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, Boolean isActive) {
         var strategyType = getStrategyType(shortUrl);
         log.info("Selected link creation strategy: {}", strategyType);
         var chosenStrategy = strategies.get(strategyType);
         if (chosenStrategy == null) {
             throw new IllegalStateException("No LinkCreationStrategy bean found for type: " + strategyType);
         }
-        return chosenStrategy.createLink(userId, longUrl, shortUrl, eventPublisher);
+        return chosenStrategy.createLink(userId, longUrl, shortUrl, isActive, eventPublisher);
     }
 
     private CreationStrategyType getStrategyType(String shortUrl) {

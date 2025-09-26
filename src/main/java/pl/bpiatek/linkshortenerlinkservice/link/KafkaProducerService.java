@@ -38,6 +38,7 @@ class KafkaProducerService {
                 .setUserId(link.userId())
                 .setShortUrl(link.shortUrl())
                 .setLongUrl(link.longUrl())
+                .setIsActive(link.isActive())
                 .build();
 
         var eventToSend = LinkLifecycleEvent.newBuilder()

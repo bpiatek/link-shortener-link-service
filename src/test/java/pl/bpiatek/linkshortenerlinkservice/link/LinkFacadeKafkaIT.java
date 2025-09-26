@@ -54,7 +54,7 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
         var customCode = "integ-test";
 
         // when
-        linkFacade.createLink(USER_ID, LONG_URL, customCode);
+        linkFacade.createLink(USER_ID, LONG_URL, customCode, true);
 
         // then
         var record = testConsumer.awaitRecord(10, TimeUnit.SECONDS);
@@ -73,6 +73,7 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
             softly.assertThat(createdPayload.getUserId()).isEqualTo(USER_ID);
             softly.assertThat(createdPayload.getShortUrl()).isEqualTo(customCode);
             softly.assertThat(createdPayload.getLongUrl()).isEqualTo(LONG_URL);
+            softly.assertThat(createdPayload.getIsActive()).isTrue();
 
             var headers = record.headers();
             softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");
