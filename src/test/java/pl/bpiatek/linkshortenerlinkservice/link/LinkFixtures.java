@@ -36,11 +36,11 @@ class LinkFixtures {
         var now = clock.instant();
 
         Map<String, Object> params = Map.of(
-                "user_id", getProvidedStringOr(link.getUserId(), "123"),
-                "short_url", getProvidedStringOr(link.getShortUrl(), "aB5xZ1"),
-                "long_url", getProvidedStringOr(link.getLongUrl(), "https://example.com/a-very-long-url"),
-                "title", getProvidedStringOr(link.getTitle(), "Example Title"),
-                "notes", getProvidedStringOr(link.getNotes(), "Some notes"),
+                "user_id", link.getUserId(),
+                "short_url", link.getShortUrl(),
+                "long_url", link.getLongUrl(),
+                "title", link.getTitle(),
+                "notes", link.getNotes(),
                 "is_active", link.isActive(),
                 "created_at", getProvidedDateOr(link.getCreatedAt(), now),
                 "updated_at", getProvidedDateOr(link.getUpdatedAt(), now),
@@ -92,12 +92,6 @@ class LinkFixtures {
         return provided != null
                 ? Timestamp.from(provided.toInstant(ZoneOffset.UTC))
                 : Timestamp.from(or);
-    }
-
-    private String getProvidedStringOr(String provided, String or) {
-        return provided != null
-                ? provided
-                : or;
     }
 
     private static final RowMapper<Link> LINK_ROW_MAPPER = (rs, rowNum) -> new Link(

@@ -46,17 +46,7 @@ class JdbcLinkRepository implements LinkRepository {
         var key = linkInsert.executeAndReturnKey(params);
         long generatedId = key.longValue();
 
-        return new Link(
-                generatedId,
-                link.userId(),
-                link.shortUrl(),
-                link.longUrl(),
-                link.title(),
-                link.notes(),
-                link.isActive(),
-                link.createdAt(),
-                link.updatedAt(),
-                link.expiresAt());
+        return link.withId(generatedId);
     }
 
     @Override

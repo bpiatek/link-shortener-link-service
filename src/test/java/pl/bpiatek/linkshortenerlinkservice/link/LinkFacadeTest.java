@@ -36,7 +36,6 @@ class LinkFacadeTest implements WithFullInfrastructure {
     }
 
     @Test
-    @DisplayName("should create and save a link when a valid custom short url is provided")
     void shouldCreateLinkWithCustomShortUrl() {
         // given
         var customShortUrl = "test-url";
@@ -56,8 +55,7 @@ class LinkFacadeTest implements WithFullInfrastructure {
     }
 
     @Test
-    @DisplayName("should throw an exception when trying to use a custom code that already exists")
-    void shouldFailWhenCustomCodeIsDuplicate() {
+    void shouldFailWhenCustomShortUrlIsDuplicate() {
         // given
         var customShortUrl = "test-url";
         linkFixtures.aLink(TestLink.builder()
@@ -72,8 +70,7 @@ class LinkFacadeTest implements WithFullInfrastructure {
     }
 
     @Test
-    @DisplayName("should create and save a link with a random short url when no custom short url is provided")
-    void shouldCreateLinkWithRandomCode() {
+    void shouldCreateLinkWithRandomShortUrl() {
         // when
         var response = linkFacade.createLink(USER_ID, LONG_URL, null);
 

@@ -6,12 +6,10 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkCreated;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
 
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -50,9 +48,7 @@ class KafkaProducerService {
         producerRecord.headers().add(new RecordHeader("trace-id", UUID.randomUUID().toString().getBytes(UTF_8)));
         producerRecord.headers().add(new RecordHeader("source", SOURCE_HEADER_VALUE.getBytes(UTF_8)));
 
-        CompletableFuture<SendResult<String, LinkLifecycleEvent>> future = kafkaTemplate.send(producerRecord);
-
-        future.whenComplete((result, ex) -> {
+        kafkaTemplate.send(producerRecord).whenComplete((result, ex) -> {
             if (ex == null) {
                 log.info("Successfully published LinkCreated event for link ID: {}", link.id());
                 meterRegistry.counter(METRIC_NAME,

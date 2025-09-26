@@ -27,35 +27,6 @@ public class TestLink {
         this.expiredAt = builder.expiredAt;
     }
 
-    private TestLink(Long id, String userId, String shortUrl, String longUrl, String title, String notes,
-                    boolean isActive, LocalDateTime createdAt, LocalDateTime updatedAt, LocalDateTime expiredAt) {
-        this.id = id;
-        this.userId = userId;
-        this.shortUrl = shortUrl;
-        this.longUrl = longUrl;
-        this.title = title;
-        this.notes = notes;
-        this.isActive = isActive;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.expiredAt = expiredAt;
-    }
-
-    public static TestLink aLink() {
-        return new TestLink(
-                1L,
-                "user-id-1",
-                "short-url-1",
-                "http://long-url-1",
-                "title-1",
-                "notes-1",
-                true,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                LocalDateTime.now().plusDays(7)
-        );
-    }
-
     public static TestLinkBuilder builder() {
         return new TestLinkBuilder();
     }
@@ -102,11 +73,11 @@ public class TestLink {
 
     public static class TestLinkBuilder {
         private Long id;
-        private String userId;
-        private String shortUrl;
-        private String longUrl;
-        private String title;
-        private String notes;
+        private String userId = "123";
+        private String shortUrl = "aB5xZ1";
+        private String longUrl = "https://example.com/a-very-long-url";
+        private String title = "Example Title";
+        private String notes = "Some notes";
         private boolean isActive;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
