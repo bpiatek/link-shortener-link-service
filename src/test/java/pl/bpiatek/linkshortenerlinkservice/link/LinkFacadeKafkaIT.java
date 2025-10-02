@@ -108,4 +108,31 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
             softly.assertThat(headers.lastHeader("trace-id").value()).isNotNull();
         });
     }
+
+    @Test
+    void shouldPersistLinkWithRandomStrategyAndPublishKafkaEventWhenTitleIsNotPresent() throws InterruptedException {
+        // when
+        linkFacade.createLink(USER_ID, LONG_URL, null, true, null);
+
+        // then
+        var record = testConsumer.awaitRecord(10, TimeUnit.SECONDS);
+        assertSoftly(softly -> {
+            softly.assertThat(record).isNotNull();
+            softly.assertThat(record.key()).isNotBlank();
+
+            var message = record.value();
+            softly.assertThat(message.hasLinkCreated()).isTrue();
+            var createdPayload = message.getLinkCreated();
+            softly.assertThat(createdPayload.getLinkId()).isNotBlank();
+            softly.assertThat(createdPayload.getUserId()).isEqualTo(USER_ID);
+            softly.assertThat(createdPayload.getShortUrl()).isNotBlank();
+            softly.assertThat(createdPayload.getLongUrl()).isEqualTo(LONG_URL);
+            softly.assertThat(createdPayload.getIsActive()).isTrue();
+            softly.assertThat(createdPayload.getTitle()).isEmpty();
+
+            var headers = record.headers();
+            softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");
+            softly.assertThat(headers.lastHeader("trace-id").value()).isNotNull();
+        });
+    }
 }
