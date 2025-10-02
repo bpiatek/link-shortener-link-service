@@ -24,11 +24,11 @@ class RandomShortUrlCreationStrategy implements LinkCreationStrategy {
     }
 
     @Override
-    public CreateLinkResponse createLink(String userId, String longUrl, String ignoredShortUrl, boolean isActive, ApplicationEventPublisher eventPublisher) {
+    public CreateLinkResponse createLink(String userId, String longUrl, String ignoredShortUrl, boolean isActive, String title, ApplicationEventPublisher eventPublisher) {
         for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
             var generatedShortUrl = shortUrlGenerator.generate();
             try {
-                var linkToSave = linkMapper.toLink(userId, longUrl, generatedShortUrl, isActive);
+                var linkToSave = linkMapper.toLink(userId, longUrl, generatedShortUrl, isActive, title);
                 var savedLink = linkRepository.save(linkToSave);
 
                 eventPublisher.publishEvent(new LinkCreatedApplicationEvent(savedLink));

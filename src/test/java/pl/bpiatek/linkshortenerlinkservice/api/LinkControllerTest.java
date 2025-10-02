@@ -37,6 +37,7 @@ class LinkControllerTest {
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
     private static final Boolean IS_ACTIVE = null;
+    private static final String TITLE = "title";
 
     @Autowired
     private MockMvc mockMvc;
@@ -50,10 +51,10 @@ class LinkControllerTest {
     @Test
     void shouldCreateLinkAndReturn201CreatedWhenRequestIsValid() throws Exception {
         // given
-        var request = new CreateLinkRequest(LONG_URL, "custom", IS_ACTIVE);
+        var request = new CreateLinkRequest(LONG_URL, "custom", IS_ACTIVE, TITLE);
 
         var facadeResponse = new CreateLinkResponse("custom", LONG_URL);
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive(), request.title()))
                 .thenReturn(facadeResponse);
 
         // when
@@ -67,13 +68,13 @@ class LinkControllerTest {
                 .andExpect(jsonPath("$.longUrl", is(facadeResponse.longUrl())));
 
         // then
-        verify(linkFacade).createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive());
+        verify(linkFacade).createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive(), request.title());
     }
 
     @Test
     void shouldReturn400BadRequestWhileCreatingLinkWhenLongUrlIsInvalid() throws Exception {
         // given
-        var request = new CreateLinkRequest("invalid-url", null, IS_ACTIVE);
+        var request = new CreateLinkRequest("invalid-url", null, IS_ACTIVE, null);
 
         // then
         mockMvc.perform(post("/links")
@@ -84,9 +85,9 @@ class LinkControllerTest {
     }
 
     @Test
-    void shouldReturn403ForbiddenWhileCreatingLinkWhenUSER_IDHeaderIsMissing() throws Exception {
+    void shouldReturn403ForbiddenWhileCreatingLinkWhenUSER_IdHeaderIsMissing() throws Exception {
         // given
-        var request = new CreateLinkRequest(LONG_URL, null, IS_ACTIVE);
+        var request = new CreateLinkRequest(LONG_URL, null, IS_ACTIVE, null);
 
         // then
         mockMvc.perform(post("/links")
@@ -99,7 +100,7 @@ class LinkControllerTest {
     @Test
     void shouldReturn400BadRequestWhileCreatingLinkWhenLongUrlIsBlank() throws Exception {
         // given
-        var request = new CreateLinkRequest("", null, IS_ACTIVE);
+        var request = new CreateLinkRequest("", null, IS_ACTIVE, null);
 
         // then
         mockMvc.perform(post("/links")
@@ -116,9 +117,9 @@ class LinkControllerTest {
     void shouldReturn409ConflictWhileCreatingLinkWhenFacadeThrowsShortCodeAlreadyExistsException() throws Exception {
         // given
         var shortUrl = "taken";
-        var request = new CreateLinkRequest(LONG_URL, shortUrl, IS_ACTIVE);
+        var request = new CreateLinkRequest(LONG_URL, shortUrl, IS_ACTIVE, null);
 
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive(), request.title()))
                 .thenThrow(new ShortCodeAlreadyExistsException(shortUrl));
 
         // then
@@ -134,7 +135,7 @@ class LinkControllerTest {
     @Test
     void shouldReturn415UnsupportedMediaTypeWhileCreatingLinkWhenContentTypeIsNotApplicationJson() throws Exception {
         // given
-        var request = new CreateLinkRequest(LONG_URL, "my-code", IS_ACTIVE);
+        var request = new CreateLinkRequest(LONG_URL, "my-code", IS_ACTIVE, TITLE);
 
         // then
         mockMvc.perform(post("/links")
@@ -147,9 +148,9 @@ class LinkControllerTest {
     @Test
     void shouldReturn503ServiceUnavailableWhileCreatingLinkWhenFacadeThrowsUnableToGenerateUniqueShortUrlException() throws Exception {
         // given
-        var request = new CreateLinkRequest(LONG_URL, null, IS_ACTIVE);
+        var request = new CreateLinkRequest(LONG_URL, null, IS_ACTIVE, TITLE);
 
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive(), request.title()))
                 .thenThrow(new UnableToGenerateUniqueShortUrlException(5));
 
         // then
@@ -166,9 +167,9 @@ class LinkControllerTest {
     @Test
     void shouldReturn500InternalServerErrorWhileCreatingLinkWhenFacadeThrowsUnexpectedException() throws Exception {
         // given
-        var request = new CreateLinkRequest(LONG_URL, "my-code", IS_ACTIVE);
+        var request = new CreateLinkRequest(LONG_URL, "my-code", IS_ACTIVE, null);
 
-        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive()))
+        when(linkFacade.createLink(USER_ID, request.longUrl(), request.shortUrl(), request.isActive(), request.title()))
                 .thenThrow(new RuntimeException("A critical database error occurred!"));
 
         // then
@@ -210,7 +211,7 @@ class LinkControllerTest {
 
     @Test
     void shouldReturn400BadRequestWhileCreatingLinkWhenLongLinkIsNotCorrectlyFormatted() throws Exception {
-        var request = new CreateLinkRequest("https:// example.com", "my-code", IS_ACTIVE);
+        var request = new CreateLinkRequest("https:// example.com", "my-code", IS_ACTIVE, TITLE);
 
         // then
         mockMvc.perform(post("/links")

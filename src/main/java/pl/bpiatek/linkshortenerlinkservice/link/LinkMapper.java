@@ -14,8 +14,8 @@ class LinkMapper {
         return new CreateLinkResponse(baseLinkUrl + link.shortUrl(), link.longUrl());
     }
 
-    Link toLink(String userId, String longUrl, String shortUrl, boolean isActive) {
-        return new Link(userId, shortUrl, longUrl, isActive);
+    Link toLink(String userId, String longUrl, String shortUrl, boolean isActive, String title) {
+        return new Link(userId, shortUrl, longUrl, isActive, title);
     }
 
 }

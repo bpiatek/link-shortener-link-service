@@ -28,6 +28,7 @@ class CustomShortUrlCreationStrategyTest {
 
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
+    private static final String TITLE = "test title";
 
     @Mock
     private LinkRepository linkRepository;
@@ -52,7 +53,7 @@ class CustomShortUrlCreationStrategyTest {
         var savedLink = givenSuccessfulSave(customShortUrl);
 
         // when
-        var actualResponse = strategy.createLink(USER_ID, LONG_URL, customShortUrl, true, eventPublisher);
+        var actualResponse = strategy.createLink(USER_ID, LONG_URL, customShortUrl, true, TITLE, eventPublisher);
 
         // then
         assertThat(actualResponse.shortUrl()).contains(customShortUrl);
@@ -68,7 +69,7 @@ class CustomShortUrlCreationStrategyTest {
         givenCollisionOnSave(customShortUrl);
 
         // then
-        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, customShortUrl, true, eventPublisher))
+        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, customShortUrl, true, TITLE, eventPublisher))
                 .isInstanceOf(ShortCodeAlreadyExistsException.class);
         verify(linkRepository).save(any(Link.class));
     }
@@ -78,7 +79,7 @@ class CustomShortUrlCreationStrategyTest {
         var savedLink = aSavedLinkWithShortUrl(1L, uniqueShortUrl);
         var response = aCreateLinkResponseWithShortUrl(uniqueShortUrl);
 
-        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl), anyBoolean())).willReturn(linkToSave);
+        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl), anyBoolean(), anyString())).willReturn(linkToSave);
         given(linkRepository.save(linkToSave)).willReturn(savedLink);
         given(linkMapper.toCreateLinkResponse(savedLink)).willReturn(response);
 
@@ -87,7 +88,7 @@ class CustomShortUrlCreationStrategyTest {
 
     private void givenCollisionOnSave(String collidingShortUrl) {
         var link = aLinkWithShortUrl(collidingShortUrl);
-        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl), anyBoolean())).willReturn(link);
+        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl), anyBoolean(), anyString())).willReturn(link);
         given(linkRepository.save(link)).willThrow(new DataIntegrityViolationException("Collision!"));
     }
 }

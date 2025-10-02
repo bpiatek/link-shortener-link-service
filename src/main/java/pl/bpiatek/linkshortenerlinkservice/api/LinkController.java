@@ -26,7 +26,7 @@ class LinkController {
     ResponseEntity<CreateLinkResponse> createLink(
             @RequestHeader("X-User-Id") String userId,
             @Valid @RequestBody CreateLinkRequest request) {
-        var response = linkFacade.createLink(userId, request.longUrl(), request.shortUrl(), request.isActive());
+        var response = linkFacade.createLink(userId, request.longUrl(), request.shortUrl(), request.isActive(), request.title());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

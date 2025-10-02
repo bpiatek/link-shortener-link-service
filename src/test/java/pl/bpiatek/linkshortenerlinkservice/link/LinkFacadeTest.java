@@ -18,7 +18,7 @@ class LinkFacadeTest implements WithFullInfrastructure {
 
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
-
+    private static final String TITLE = "title";
 
     @Autowired
     private LinkFacade linkFacade;
@@ -40,15 +40,15 @@ class LinkFacadeTest implements WithFullInfrastructure {
         var customShortUrl = "test-url";
 
         // when
-        var response = linkFacade.createLink(USER_ID, LONG_URL, customShortUrl, true);
+        var response = linkFacade.createLink(USER_ID, LONG_URL, customShortUrl, true, TITLE);
 
         // then:
-        var count = linkFixtures.linksCountByShortUrl(customShortUrl);
+        var link = linkFixtures.getLinkByShortUrl(customShortUrl);
         assertSoftly(s -> {
             s.assertThat(response).isNotNull();
             s.assertThat(response.shortUrl()).endsWith(customShortUrl);
             s.assertThat(response.longUrl()).isEqualTo(LONG_URL);
-            s.assertThat(count).isEqualTo(1);
+            s.assertThat(link.title()).isEqualTo(TITLE);
         });
 
     }
@@ -64,14 +64,14 @@ class LinkFacadeTest implements WithFullInfrastructure {
                 .build());
 
         // then
-        assertThatThrownBy(() -> linkFacade.createLink(USER_ID, LONG_URL, customShortUrl, true))
+        assertThatThrownBy(() -> linkFacade.createLink(USER_ID, LONG_URL, customShortUrl, true, null))
                 .isInstanceOf(ShortCodeAlreadyExistsException.class);
     }
 
     @Test
     void shouldCreateLinkWithRandomShortUrl() {
         // when
-        var response = linkFacade.createLink(USER_ID, LONG_URL, null, false);
+        var response = linkFacade.createLink(USER_ID, LONG_URL, null, false, null);
 
         // then
         var count = linkFixtures.linksCountByUserId(USER_ID);

@@ -47,7 +47,7 @@ class LinkFacadeEventPublishingTest {
 
         // then
         assertThatThrownBy(() ->
-                linkFacade.createLink("user-123", "https://example.com", "any-code", true))
+                linkFacade.createLink("user-123", "https://example.com", "any-code", true, null))
                 .isInstanceOf(RuntimeException.class);
 
         verifyNoInteractions(kafkaProducerService);

@@ -7,20 +7,21 @@ class LinkStubs {
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
     private static final String SHORT_URL = "3ehnsT8";
+    private static final String TITLE = "test title";
 
     private LinkStubs() {
     }
 
     static Link aLink() {
-        return  new Link(1L, USER_ID, SHORT_URL, LONG_URL, null, null, true, null, null, null);
+        return  new Link(1L, USER_ID, SHORT_URL, LONG_URL, TITLE, null, true, null, null, null);
     }
 
     static Link aLinkWithShortUrl(String shortUrl) {
-        return new Link(null, USER_ID, shortUrl, LONG_URL, null, null, true, null, null, null);
+        return new Link(null, USER_ID, shortUrl, LONG_URL, TITLE, null, true, null, null, null);
     }
 
     static Link aSavedLinkWithShortUrl(long id, String shortUrl) {
-        return new Link(id, USER_ID, shortUrl, LONG_URL, null, null, true, null, null, null);
+        return new Link(id, USER_ID, shortUrl, LONG_URL, TITLE, null, true, null, null, null);
     }
 
     static CreateLinkResponse aCreateLinkResponseWithShortUrl(String shortUrl) {
