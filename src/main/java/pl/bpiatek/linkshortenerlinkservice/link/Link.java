@@ -14,10 +14,10 @@ record Link(
         Instant updatedAt,
         Instant expiresAt
 ) {
-    Link withId(Long generatedId) {
+    Link withIdAndCreatedAt(Long generatedId, Instant createdAt) {
         return new Link(
                 generatedId, this.userId, this.shortUrl, this.longUrl, this.title,
-                this.notes, this.isActive, this.createdAt, this.updatedAt, this.expiresAt
+                this.notes, this.isActive, createdAt, this.updatedAt, this.expiresAt
         );
     }
 

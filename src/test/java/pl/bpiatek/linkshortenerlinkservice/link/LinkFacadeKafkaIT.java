@@ -1,5 +1,6 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
+import com.google.protobuf.Timestamp;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,6 +75,10 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
             softly.assertThat(createdPayload.getShortUrl()).isEqualTo(customCode);
             softly.assertThat(createdPayload.getLongUrl()).isEqualTo(LONG_URL);
             softly.assertThat(createdPayload.getIsActive()).isTrue();
+            softly.assertThat(createdPayload.getCreatedAt()).isEqualTo(Timestamp.newBuilder()
+                    .setSeconds(linkFromDb.createdAt().getEpochSecond())
+                    .setNanos(linkFromDb.createdAt().getNano())
+                    .build());
             softly.assertThat(createdPayload.getTitle()).isEqualTo("title");
 
             var headers = record.headers();
@@ -102,6 +107,8 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
             softly.assertThat(createdPayload.getLongUrl()).isEqualTo(LONG_URL);
             softly.assertThat(createdPayload.getIsActive()).isTrue();
             softly.assertThat(createdPayload.getTitle()).isEqualTo("title");
+            softly.assertThat(createdPayload.getCreatedAt()).isNotNull();
+
 
             var headers = record.headers();
             softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");
@@ -129,6 +136,7 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
             softly.assertThat(createdPayload.getLongUrl()).isEqualTo(LONG_URL);
             softly.assertThat(createdPayload.getIsActive()).isTrue();
             softly.assertThat(createdPayload.getTitle()).isEmpty();
+            softly.assertThat(createdPayload.getCreatedAt()).isNotNull();
 
             var headers = record.headers();
             softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");

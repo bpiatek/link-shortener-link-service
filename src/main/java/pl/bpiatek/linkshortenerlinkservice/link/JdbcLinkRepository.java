@@ -31,6 +31,7 @@ class JdbcLinkRepository implements LinkRepository {
     @Override
     public Link save(Link link) {
         var now = clock.instant();
+        var createdAt = providedDateOr(link.createdAt(), now);
 
         var params = new HashMap<String, Object>();
         params.put("user_id", link.userId());
@@ -39,14 +40,14 @@ class JdbcLinkRepository implements LinkRepository {
         params.put("title", link.title());
         params.put("notes", link.notes());
         params.put("is_active", link.isActive());
-        params.put("created_at", providedDateOr(link.createdAt(), now));
+        params.put("created_at", createdAt);
         params.put("updated_at", providedDateOr(link.updatedAt(), now));
         params.put("expires_at", providedDateOr(link.expiresAt(), now.plus(7, DAYS)));
 
         var key = linkInsert.executeAndReturnKey(params);
         long generatedId = key.longValue();
 
-        return link.withId(generatedId);
+        return link.withIdAndCreatedAt(generatedId, createdAt.toInstant());
     }
 
     @Override

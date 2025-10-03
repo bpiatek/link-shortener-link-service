@@ -1,5 +1,6 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
+import com.google.protobuf.Timestamp;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -39,6 +40,9 @@ class KafkaProducerService {
                 .setShortUrl(link.shortUrl())
                 .setLongUrl(link.longUrl())
                 .setIsActive(link.isActive())
+                .setCreatedAt(Timestamp.newBuilder()
+                        .setSeconds(link.createdAt().getEpochSecond())
+                        .setNanos(link.createdAt().getNano()).build())
                 .setTitle(link.title() == null ? "" : link.title())
                 .build();
 
