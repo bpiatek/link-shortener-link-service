@@ -4,11 +4,11 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-class KafkaIntegrationEvents {
+class LinkCreatedPublisher {
 
     private final KafkaProducerService kafkaProducerService;
 
-    KafkaIntegrationEvents(KafkaProducerService kafkaProducerService) {
+    LinkCreatedPublisher(KafkaProducerService kafkaProducerService) {
         this.kafkaProducerService = kafkaProducerService;
     }
 

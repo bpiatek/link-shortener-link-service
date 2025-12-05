@@ -1,7 +1,5 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,10 +16,7 @@ import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
 import java.util.concurrent.CompletableFuture;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -30,34 +25,24 @@ import static org.mockito.Mockito.verify;
 class KafkaProducerServiceTest {
 
     private static final String TEST_TOPIC = "test-topic";
-    private static final String METRIC_NAME = "link_service_kafka_messages_total";
 
     @Mock
     private KafkaTemplate<String, LinkLifecycleEvent> kafkaTemplate;
 
-    @Mock
-    private MeterRegistry meterRegistry;
-
     @Captor
     private ArgumentCaptor<ProducerRecord<String, LinkLifecycleEvent>> producerRecordCaptor;
 
-    @Captor
-    private ArgumentCaptor<String[]> tagsCaptor;
-
     private KafkaProducerService kafkaProducerService;
-    private Counter counter;
     private CompletableFuture<SendResult<String, LinkLifecycleEvent>> future;
     private Link link;
 
     @BeforeEach
     void setUp() {
-        kafkaProducerService = new KafkaProducerService(TEST_TOPIC, kafkaTemplate, meterRegistry);
+        kafkaProducerService = new KafkaProducerService(TEST_TOPIC, kafkaTemplate);
         link = LinkStubs.aLink();
         future = new CompletableFuture<>();
-        counter = mock(Counter.class);
 
         given(kafkaTemplate.send(any(ProducerRecord.class))).willReturn(future);
-        given(meterRegistry.counter(anyString(), any(String[].class))).willReturn(counter);
     }
 
     @Test
@@ -74,35 +59,6 @@ class KafkaProducerServiceTest {
         assertRecordBasics(sentRecord, softly);
         assertHeaders(sentRecord, softly);
         softly.assertAll();
-
-        verify(meterRegistry).counter(eq(METRIC_NAME), tagsCaptor.capture());
-        verify(counter).increment();
-
-        assertThat(tagsCaptor.getValue()).containsExactly("topic", TEST_TOPIC, "status", "success");
-    }
-
-    @Test
-    void shouldIncrementFailureMetricOnException() {
-        // when
-        kafkaProducerService.sendLinkCreatedEvent(link);
-        future.completeExceptionally(new RuntimeException("Kafka down"));
-
-        // then
-        verify(kafkaTemplate).send(producerRecordCaptor.capture());
-        var sentRecord = producerRecordCaptor.getValue();
-
-        var softly = new SoftAssertions();
-        assertRecordBasics(sentRecord, softly);
-        assertHeaders(sentRecord, softly);
-        softly.assertAll();
-
-        verify(meterRegistry).counter(eq(METRIC_NAME), tagsCaptor.capture());
-        verify(counter).increment();
-
-        assertThat(tagsCaptor.getValue())
-                .contains("topic", TEST_TOPIC)
-                .contains("status", "failure")
-                .contains("exception", "RuntimeException");
     }
 
     private void assertRecordBasics(ProducerRecord<String, LinkLifecycleEvent> record, SoftAssertions softly) {

@@ -1,6 +1,5 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -38,14 +37,13 @@ class LinkConfig {
     @Bean
     KafkaProducerService kafkaProducerService(
             @Value("${topic.link.lifecycle}") String topicName,
-            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate,
-            MeterRegistry meterRegistry) {
-        return new KafkaProducerService(topicName, kafkaTemplate, meterRegistry);
+            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate) {
+        return new KafkaProducerService(topicName, kafkaTemplate);
     }
 
     @Bean
-    KafkaIntegrationEvents kafkaIntegrationEvents(KafkaProducerService kafkaProducerService) {
-        return new KafkaIntegrationEvents(kafkaProducerService);
+    LinkCreatedPublisher linkCreatedPublisher(KafkaProducerService kafkaProducerService) {
+        return new LinkCreatedPublisher(kafkaProducerService);
     }
 
     @Bean

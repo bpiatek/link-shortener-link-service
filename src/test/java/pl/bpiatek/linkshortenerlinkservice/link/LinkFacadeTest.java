@@ -50,7 +50,6 @@ class LinkFacadeTest implements WithFullInfrastructure {
             s.assertThat(response.longUrl()).isEqualTo(LONG_URL);
             s.assertThat(link.title()).isEqualTo(TITLE);
         });
-
     }
 
     @Test
