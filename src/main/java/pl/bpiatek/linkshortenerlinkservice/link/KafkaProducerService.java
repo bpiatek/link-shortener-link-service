@@ -2,7 +2,6 @@ package pl.bpiatek.linkshortenerlinkservice.link;
 
 import com.google.protobuf.Timestamp;
 import io.micrometer.context.ContextSnapshotFactory;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.slf4j.Logger;
