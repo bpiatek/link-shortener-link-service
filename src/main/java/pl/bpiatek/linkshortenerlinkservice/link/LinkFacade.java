@@ -43,8 +43,9 @@ public class LinkFacade {
         return chosenStrategy.createLink(userId, longUrl, shortUrl, isActive, title, eventPublisher);
     }
 
-    public LinkDto updateLink(String userId, Long linkId, UpdateLinkRequest request) {
-        return linkUpdateService.update(userId, linkId, request);
+    public LinkDto updateLink(String userId, Long linkId, UpdateLinkRequest request, ApplicationEventPublisher eventPublisher) {
+        log.info("Updating link with ID: {}", linkId);
+        return linkUpdateService.update(userId, linkId, request, eventPublisher);
     }
 
     private CreationStrategyType getStrategyType(String shortUrl) {

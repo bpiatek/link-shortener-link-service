@@ -46,7 +46,7 @@ class LinkUpdateService {
 
         linkRepository.update(updatedLink);
 
-        eventPublisher.publishEvent(updatedLink);
+        eventPublisher.publishEvent(new LinkUpdatedApplicationEvent(updatedLink));
 
         return linkMapper.toLinkDto(updatedLink);
     }
