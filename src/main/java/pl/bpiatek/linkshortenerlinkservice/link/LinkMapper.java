@@ -1,6 +1,7 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
+import pl.bpiatek.linkshortenerlinkservice.api.dto.LinkDto;
 
 class LinkMapper {
 
@@ -18,4 +19,18 @@ class LinkMapper {
         return new Link(userId, shortUrl, longUrl, isActive, title);
     }
 
+    LinkDto toLinkDto(Link link) {
+        return new LinkDto(
+                String.valueOf(link.id()),
+                link.userId(),
+                link.shortUrl(),
+                link.longUrl(),
+                link.title(),
+                link.notes(),
+                link.isActive(),
+                link.createdAt(),
+                link.updatedAt(),
+                link.expiresAt()
+        );
+    }
 }

@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
+import pl.bpiatek.linkshortenerlinkservice.api.dto.LinkDto;
+import pl.bpiatek.linkshortenerlinkservice.api.dto.UpdateLinkRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -18,11 +20,16 @@ public class LinkFacade {
 
     private final Map<CreationStrategyType, LinkCreationStrategy> strategies;
     private final ApplicationEventPublisher eventPublisher;
+    private final LinkUpdateService linkUpdateService;
 
-    LinkFacade(List<LinkCreationStrategy> strategiesLIst, ApplicationEventPublisher eventPublisher) {
+    LinkFacade(
+            List<LinkCreationStrategy> strategiesLIst,
+            ApplicationEventPublisher eventPublisher,
+            LinkUpdateService linkUpdateService) {
         this.strategies = strategiesLIst.stream()
                 .collect(Collectors.toUnmodifiableMap(LinkCreationStrategy::getType, Function.identity()));
         this.eventPublisher = eventPublisher;
+        this.linkUpdateService = linkUpdateService;
     }
 
     @Transactional
@@ -34,6 +41,10 @@ public class LinkFacade {
             throw new IllegalStateException("No LinkCreationStrategy bean found for type: " + strategyType);
         }
         return chosenStrategy.createLink(userId, longUrl, shortUrl, isActive, title, eventPublisher);
+    }
+
+    public LinkDto updateLink(String userId, Long linkId, UpdateLinkRequest request) {
+        return linkUpdateService.update(userId, linkId, request);
     }
 
     private CreationStrategyType getStrategyType(String shortUrl) {

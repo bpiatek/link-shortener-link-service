@@ -22,7 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class KafkaProducerServiceTest {
+class LinkCreatedKafkaProducerTest {
 
     private static final String TEST_TOPIC = "test-topic";
 
@@ -32,13 +32,13 @@ class KafkaProducerServiceTest {
     @Captor
     private ArgumentCaptor<ProducerRecord<String, LinkLifecycleEvent>> producerRecordCaptor;
 
-    private KafkaProducerService kafkaProducerService;
+    private LinkCreatedKafkaProducer linkCreatedKafkaProducer;
     private CompletableFuture<SendResult<String, LinkLifecycleEvent>> future;
     private Link link;
 
     @BeforeEach
     void setUp() {
-        kafkaProducerService = new KafkaProducerService(TEST_TOPIC, kafkaTemplate);
+        linkCreatedKafkaProducer = new LinkCreatedKafkaProducer(TEST_TOPIC, kafkaTemplate);
         link = LinkStubs.aLink();
         future = new CompletableFuture<>();
 
@@ -48,7 +48,7 @@ class KafkaProducerServiceTest {
     @Test
     void shouldSendMessageAndIncrementSuccessMetric() {
         // when
-        kafkaProducerService.sendLinkCreatedEvent(link);
+        linkCreatedKafkaProducer.sendLinkCreatedEvent(link);
         future.complete(mock(SendResult.class));
 
         // then

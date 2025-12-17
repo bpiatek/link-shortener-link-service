@@ -10,5 +10,9 @@ interface LinkRepository {
     Optional<Link> findByShortUrl(String shortUrl);
 
     List<Link> findByUserId(String userId);
+
+    void update(Link link);
+
+    Optional<Link> findByIdAndUserId(Long id, String userId);
 }
 

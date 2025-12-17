@@ -1,7 +1,6 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
 import com.google.protobuf.Timestamp;
-import io.micrometer.context.ContextSnapshotFactory;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.slf4j.Logger;
@@ -9,21 +8,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkCreated;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
+import pl.bpiatek.linkshortenerlinkservice.exception.KafkaEventSendingException;
+
+import java.util.concurrent.ExecutionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-class KafkaProducerService {
+class LinkCreatedKafkaProducer {
 
-    private static final Logger log = LoggerFactory.getLogger(KafkaProducerService.class);
+    private static final Logger log = LoggerFactory.getLogger(LinkCreatedKafkaProducer.class);
 
     private static final String SOURCE_HEADER_VALUE = "link-service";
-    private static final ContextSnapshotFactory snapshotFactory = ContextSnapshotFactory.builder().build();
 
     private final String topicName;
     private final KafkaTemplate<String, LinkLifecycleEvent> kafkaTemplate;
 
-    public KafkaProducerService(String topicName,
-                         KafkaTemplate<String, LinkLifecycleEvent> kafkaTemplate) {
+    public LinkCreatedKafkaProducer(String topicName,
+                                    KafkaTemplate<String, LinkLifecycleEvent> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
         this.topicName = topicName;
     }
@@ -48,22 +49,21 @@ class KafkaProducerService {
         var producerRecord = new ProducerRecord<>(topicName, String.valueOf(link.id()), eventToSend);
         producerRecord.headers().add(new RecordHeader("source", SOURCE_HEADER_VALUE.getBytes(UTF_8)));
 
-        var snapshot = snapshotFactory.captureAll();
-
-        kafkaTemplate.send(producerRecord).whenComplete((result, ex) -> {
-            try (var scope = snapshot.setThreadLocals()) {
-                if (ex == null) {
-                    log.info("Successfully published LinkCreated event for link ID: {} to partition: {} offset: {}",
-                            link.id(),
-                            result.getRecordMetadata().partition(),
-                            result.getRecordMetadata().offset());
-                } else {
-                    log.error("Failed to publish LinkCreated event for link ID: {}. Reason: {}",
-                            link.id(),
-                            ex.getMessage(),
-                            ex);
-                }
-            }
-        });
+        try {
+            var result = kafkaTemplate.send(producerRecord).get();
+            log.info("Successfully published LinkCreated event for link ID: {} to partition: {} offset: {}",
+                    link.id(),
+                    result.getRecordMetadata().partition(),
+                    result.getRecordMetadata().offset());
+        } catch (ExecutionException e) {
+            log.error("Failed to publish LinkCreated event for link ID: {}. Reason: {}",
+                    link.id(),
+                    e.getMessage(),
+                    e);
+            throw new KafkaEventSendingException("Failed to send PasswordReset event.");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while sending PasswordReset event.", e);
+        }
     }
 }

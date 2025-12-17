@@ -34,7 +34,7 @@ class LinkFacadeEventPublishingTest {
     private LinkRepository linkRepository;
 
     @MockitoBean
-    private KafkaProducerService kafkaProducerService;
+    private LinkCreatedKafkaProducer linkCreatedKafkaProducer;
 
     @MockitoBean
     private LinkFixtures linkFixtures;
@@ -50,6 +50,6 @@ class LinkFacadeEventPublishingTest {
                 linkFacade.createLink("user-123", "https://example.com", "any-code", true, null))
                 .isInstanceOf(RuntimeException.class);
 
-        verifyNoInteractions(kafkaProducerService);
+        verifyNoInteractions(linkCreatedKafkaProducer);
     }
 }

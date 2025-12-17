@@ -1,6 +1,7 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 
@@ -69,6 +70,39 @@ class JdbcLinkRepository implements LinkRepository {
                  WHERE l.user_id = :userId""";
 
         return namedJdbcTemplate.query(sql, Map.of("userId", userId), LINK_ROW_MAPPER);
+    }
+
+    @Override
+    public void update(Link link) {
+        var sql = """
+            UPDATE links
+            SET long_url = :longUrl,
+                title = :title,
+                is_active = :isActive,
+                updated_at = :updatedAt
+            WHERE id = :id
+            """;
+
+        var params = new MapSqlParameterSource()
+                .addValue("id", link.id())
+                .addValue("longUrl", link.longUrl())
+                .addValue("title", link.title())
+                .addValue("isActive", link.isActive())
+                .addValue("updatedAt", Timestamp.from(clock.instant()));
+
+        namedJdbcTemplate.update(sql, params);
+    }
+
+    @Override
+    public Optional<Link> findByIdAndUserId(Long id, String userId) {
+        var sql = """
+                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
+                FROM links l
+                WHERE l.id = :id AND l.user_id = :userId""";
+
+        var params = Map.of("id", id, "userId", userId);
+        var result = namedJdbcTemplate.query(sql, params, LINK_ROW_MAPPER);
+        return result.isEmpty() ? Optional.empty() : Optional.of(result.getFirst());
     }
 
     private Timestamp providedDateOr(Instant provided, Instant or) {

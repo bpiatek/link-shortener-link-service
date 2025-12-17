@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.CONFLICT;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 import static org.springframework.http.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 
@@ -76,6 +77,26 @@ class GlobalExceptionHandler {
         );
 
         return new ResponseEntity<>(apiError, CONFLICT);
+    }
+
+    @ExceptionHandler(LinkNotFoundException.class)
+    public ResponseEntity<ApiError> handleLinkNotFound(
+            LinkNotFoundException ex,
+            HttpServletRequest request) {
+
+        log.warn("Link not found: {}", ex.getMessage());
+
+        var apiError = new ApiError(
+                clock.instant(),
+                "/errors/link-not-found",
+                "Link not found",
+                NOT_FOUND.value(),
+                ex.getMessage(),
+                request.getRequestURI(),
+                null
+        );
+
+        return new ResponseEntity<>(apiError, NOT_FOUND);
     }
 
     @ExceptionHandler(UnableToGenerateUniqueShortUrlException.class)

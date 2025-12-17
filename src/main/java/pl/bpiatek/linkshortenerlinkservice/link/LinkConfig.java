@@ -35,15 +35,22 @@ class LinkConfig {
     }
 
     @Bean
-    KafkaProducerService kafkaProducerService(
+    LinkCreatedKafkaProducer linkCreatedKafkaProducer(
             @Value("${topic.link.lifecycle}") String topicName,
             KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate) {
-        return new KafkaProducerService(topicName, kafkaTemplate);
+        return new LinkCreatedKafkaProducer(topicName, kafkaTemplate);
     }
 
     @Bean
-    LinkCreatedPublisher linkCreatedPublisher(KafkaProducerService kafkaProducerService) {
-        return new LinkCreatedPublisher(kafkaProducerService);
+    LinkUpdatedKafkaProducer linkUpdatedKafkaProducer(
+            @Value("${topic.link.lifecycle}") String topicName,
+            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate) {
+        return  new LinkUpdatedKafkaProducer(topicName, kafkaTemplate);
+    }
+
+    @Bean
+    LinkEventsPublisher linkCreatedPublisher(LinkCreatedKafkaProducer linkCreatedKafkaProducer, LinkUpdatedKafkaProducer linkUpdatedKafkaProducer) {
+        return new LinkEventsPublisher(linkCreatedKafkaProducer, linkUpdatedKafkaProducer);
     }
 
     @Bean
@@ -54,7 +61,12 @@ class LinkConfig {
     }
 
     @Bean
-    LinkFacade linkFacade(List<LinkCreationStrategy> strategyList, ApplicationEventPublisher eventPublisher) {
-        return new LinkFacade(strategyList, eventPublisher);
+    LinkUpdateService linkUpdateService(LinkRepository linkRepository, ApplicationEventPublisher eventPublisher, Clock clock, LinkMapper linkMapper) {
+        return new LinkUpdateService(linkRepository, eventPublisher, clock, linkMapper);
+    }
+
+    @Bean
+    LinkFacade linkFacade(List<LinkCreationStrategy> strategyList, ApplicationEventPublisher eventPublisher, LinkUpdateService linkUpdateService) {
+        return new LinkFacade(strategyList, eventPublisher, linkUpdateService);
     }
 }

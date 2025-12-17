@@ -32,7 +32,7 @@
         <spring-cloud.version>2025.0.0</spring-cloud.version>
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
         <commons-validator.version>1.10.0</commons-validator.version>
-        <link-shortener-contracts.version>0.0.11</link-shortener-contracts.version>
+        <link-shortener-contracts.version>0.0.12</link-shortener-contracts.version>
         <confluent.version>8.0.0</confluent.version>
         <archunit-junit5.version>1.4.1</archunit-junit5.version>
     </properties>
@@ -56,10 +56,6 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-tracing-bridge-otel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>context-propagation</artifactId>
         </dependency>
         <dependency>
             <groupId>io.opentelemetry</groupId>
