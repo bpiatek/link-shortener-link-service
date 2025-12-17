@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.LinkDto;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.UpdateLinkRequest;
+import pl.bpiatek.linkshortenerlinkservice.exception.LinkNotFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -23,15 +24,18 @@ public class LinkFacade {
     private final Map<CreationStrategyType, LinkCreationStrategy> strategies;
     private final ApplicationEventPublisher eventPublisher;
     private final LinkUpdateService linkUpdateService;
+    private final LinkRetriever linkRetriever;
 
     LinkFacade(
             List<LinkCreationStrategy> strategiesLIst,
             ApplicationEventPublisher eventPublisher,
-            LinkUpdateService linkUpdateService) {
+            LinkUpdateService linkUpdateService,
+            LinkRetriever linkRetriever) {
         this.strategies = strategiesLIst.stream()
                 .collect(Collectors.toUnmodifiableMap(LinkCreationStrategy::getType, Function.identity()));
         this.eventPublisher = eventPublisher;
         this.linkUpdateService = linkUpdateService;
+        this.linkRetriever = linkRetriever;
     }
 
     @Transactional
@@ -51,6 +55,11 @@ public class LinkFacade {
         log.info("Updating link with ID: {}", linkId);
         return linkUpdateService.update(userId, linkId, request);
     }
+
+    public LinkDto getLink(String userId, Long linkId) {
+        return linkRetriever.getLink(userId, linkId);
+    }
+
 
     private CreationStrategyType getStrategyType(String shortUrl) {
         if (shortUrl != null && !shortUrl.isBlank()) {

@@ -66,7 +66,15 @@ class LinkConfig {
     }
 
     @Bean
-    LinkFacade linkFacade(List<LinkCreationStrategy> strategyList, ApplicationEventPublisher eventPublisher, LinkUpdateService linkUpdateService) {
-        return new LinkFacade(strategyList, eventPublisher, linkUpdateService);
+    LinkRetriever linkRetriever(LinkRepository linkRepository, LinkMapper linkMapper) {
+        return new LinkRetriever(linkRepository, linkMapper);
+    }
+
+    @Bean
+    LinkFacade linkFacade(List<LinkCreationStrategy> strategyList,
+                          ApplicationEventPublisher eventPublisher,
+                          LinkUpdateService linkUpdateService,
+                          LinkRetriever linkRetriever) {
+        return new LinkFacade(strategyList, eventPublisher, linkUpdateService, linkRetriever);
     }
 }
