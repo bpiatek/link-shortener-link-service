@@ -10,14 +10,14 @@ import java.time.Clock;
 
 import static pl.bpiatek.linkshortenerlinkservice.link.UrlSanitizer.prependProtocolIfMissing;
 
-class LinkUpdateService {
+class LinkManipulationService {
 
     private final  LinkRepository linkRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final LinkMapper linkMapper;
 
-    LinkUpdateService(
+    LinkManipulationService(
             LinkRepository linkRepository,
             ApplicationEventPublisher eventPublisher,
             Clock clock,
@@ -56,5 +56,15 @@ class LinkUpdateService {
         eventPublisher.publishEvent(new LinkUpdatedApplicationEvent(updatedLink));
 
         return linkMapper.toLinkDto(updatedLink);
+    }
+
+    @Transactional
+    public void deleteLink(String userId, Long linkId) {
+        var link = linkRepository.findByIdAndUserId(linkId, userId)
+                .orElseThrow(() -> new LinkNotFoundException("Link not found or access denied"));
+
+        linkRepository.deleteByIdAndUserId(linkId, userId);
+
+        eventPublisher.publishEvent(new LinkDeletedApplicationEvent(link));
     }
 }

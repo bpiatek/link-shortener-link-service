@@ -61,8 +61,8 @@ class LinkConfig {
     }
 
     @Bean
-    LinkUpdateService linkUpdateService(LinkRepository linkRepository, ApplicationEventPublisher eventPublisher, Clock clock, LinkMapper linkMapper) {
-        return new LinkUpdateService(linkRepository, eventPublisher, clock, linkMapper);
+    LinkManipulationService linkUpdateService(LinkRepository linkRepository, ApplicationEventPublisher eventPublisher, Clock clock, LinkMapper linkMapper) {
+        return new LinkManipulationService(linkRepository, eventPublisher, clock, linkMapper);
     }
 
     @Bean
@@ -73,8 +73,8 @@ class LinkConfig {
     @Bean
     LinkFacade linkFacade(List<LinkCreationStrategy> strategyList,
                           ApplicationEventPublisher eventPublisher,
-                          LinkUpdateService linkUpdateService,
+                          LinkManipulationService linkManipulationService,
                           LinkRetriever linkRetriever) {
-        return new LinkFacade(strategyList, eventPublisher, linkUpdateService, linkRetriever);
+        return new LinkFacade(strategyList, eventPublisher, linkManipulationService, linkRetriever);
     }
 }

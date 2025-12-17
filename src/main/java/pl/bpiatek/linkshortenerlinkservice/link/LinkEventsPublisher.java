@@ -8,10 +8,12 @@ class LinkEventsPublisher {
 
     private final LinkCreatedKafkaProducer linkCreatedKafkaProducer;
     private final LinkUpdatedKafkaProducer linkUpdatedKafkaProducer;
+    private final LinkDeletedKafkaProducer linkDeletedKafkaProducer;
 
-    LinkEventsPublisher(LinkCreatedKafkaProducer linkCreatedKafkaProducer, LinkUpdatedKafkaProducer linkUpdatedKafkaProducer) {
+    LinkEventsPublisher(LinkCreatedKafkaProducer linkCreatedKafkaProducer, LinkUpdatedKafkaProducer linkUpdatedKafkaProducer, LinkDeletedKafkaProducer linkDeletedKafkaProducer) {
         this.linkCreatedKafkaProducer = linkCreatedKafkaProducer;
         this.linkUpdatedKafkaProducer = linkUpdatedKafkaProducer;
+        this.linkDeletedKafkaProducer = linkDeletedKafkaProducer;
     }
 
     @Async
@@ -24,5 +26,11 @@ class LinkEventsPublisher {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     void handleLinkUpdatedEvent(LinkUpdatedApplicationEvent event) {
         linkUpdatedKafkaProducer.sendLinkUpdatedEvent(event.link());
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    void handleLinkDeletedEvent(LinkDeletedApplicationEvent event) {
+        linkDeletedKafkaProducer.sendLinkDeletedEvent(event.link());
     }
 }

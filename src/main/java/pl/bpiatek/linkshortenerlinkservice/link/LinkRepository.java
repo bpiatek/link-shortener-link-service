@@ -14,5 +14,7 @@ interface LinkRepository {
     void update(Link link);
 
     Optional<Link> findByIdAndUserId(Long id, String userId);
+
+    void deleteByIdAndUserId(Long id, String userId);
 }
 

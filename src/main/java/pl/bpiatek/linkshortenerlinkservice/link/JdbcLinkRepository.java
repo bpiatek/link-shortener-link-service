@@ -105,6 +105,12 @@ class JdbcLinkRepository implements LinkRepository {
         return result.isEmpty() ? Optional.empty() : Optional.of(result.getFirst());
     }
 
+    @Override
+    public void deleteByIdAndUserId(Long id, String userId) {
+        var sql = "DELETE FROM links WHERE id = :id AND user_id = :userId";
+        namedJdbcTemplate.update(sql, Map.of("id", id, "userId", userId));
+    }
+
     private Timestamp providedDateOr(Instant provided, Instant or) {
         return provided != null
                 ? Timestamp.from(provided)

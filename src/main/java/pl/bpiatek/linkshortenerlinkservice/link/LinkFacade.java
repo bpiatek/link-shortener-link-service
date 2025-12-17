@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.LinkDto;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.UpdateLinkRequest;
-import pl.bpiatek.linkshortenerlinkservice.exception.LinkNotFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -23,18 +22,18 @@ public class LinkFacade {
 
     private final Map<CreationStrategyType, LinkCreationStrategy> strategies;
     private final ApplicationEventPublisher eventPublisher;
-    private final LinkUpdateService linkUpdateService;
+    private final LinkManipulationService linkManipulationService;
     private final LinkRetriever linkRetriever;
 
     LinkFacade(
             List<LinkCreationStrategy> strategiesLIst,
             ApplicationEventPublisher eventPublisher,
-            LinkUpdateService linkUpdateService,
+            LinkManipulationService linkManipulationService,
             LinkRetriever linkRetriever) {
         this.strategies = strategiesLIst.stream()
                 .collect(Collectors.toUnmodifiableMap(LinkCreationStrategy::getType, Function.identity()));
         this.eventPublisher = eventPublisher;
-        this.linkUpdateService = linkUpdateService;
+        this.linkManipulationService = linkManipulationService;
         this.linkRetriever = linkRetriever;
     }
 
@@ -53,13 +52,16 @@ public class LinkFacade {
 
     public LinkDto updateLink(String userId, Long linkId, UpdateLinkRequest request) {
         log.info("Updating link with ID: {}", linkId);
-        return linkUpdateService.update(userId, linkId, request);
+        return linkManipulationService.update(userId, linkId, request);
     }
 
     public LinkDto getLink(String userId, Long linkId) {
         return linkRetriever.getLink(userId, linkId);
     }
 
+    public void deleteLink(String userId, Long linkId) {
+        linkManipulationService.deleteLink(userId, linkId);
+    }
 
     private CreationStrategyType getStrategyType(String shortUrl) {
         if (shortUrl != null && !shortUrl.isBlank()) {

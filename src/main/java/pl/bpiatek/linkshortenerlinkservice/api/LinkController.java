@@ -3,6 +3,7 @@ package pl.bpiatek.linkshortenerlinkservice.api;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,4 +55,14 @@ class LinkController {
         var linkDto = linkFacade.getLink(userId, id);
         return ResponseEntity.ok(linkDto);
     }
+
+    @DeleteMapping("/{id}")
+    ResponseEntity<Void> deleteLink(
+            @RequestHeader("X-User-Id") String userId,
+            @PathVariable Long id
+    ) {
+        linkFacade.deleteLink(userId, id);
+        return ResponseEntity.noContent().build();
+    }
+
 }
