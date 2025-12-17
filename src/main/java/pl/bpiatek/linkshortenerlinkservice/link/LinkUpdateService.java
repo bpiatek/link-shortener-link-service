@@ -8,6 +8,8 @@ import pl.bpiatek.linkshortenerlinkservice.exception.LinkNotFoundException;
 
 import java.time.Clock;
 
+import static pl.bpiatek.linkshortenerlinkservice.link.UrlSanitizer.prependProtocolIfMissing;
+
 class LinkUpdateService {
 
     private final  LinkRepository linkRepository;
@@ -28,14 +30,19 @@ class LinkUpdateService {
 
     @Transactional
     LinkDto update(String userId, Long linkId, UpdateLinkRequest request) {
+
         var existingLink = linkRepository.findByIdAndUserId(linkId, userId)
                 .orElseThrow(() -> new LinkNotFoundException("Link not found or access denied"));
+
+        var cleanUrl = request.longUrl() != null
+                ? prependProtocolIfMissing(request.longUrl())
+                : existingLink.longUrl();
 
         var updatedLink = new Link(
                 existingLink.id(),
                 existingLink.userId(),
                 existingLink.shortUrl(),
-                request.longUrl() != null ? request.longUrl() : existingLink.longUrl(),
+                cleanUrl,
                 request.title() != null ? request.title() : existingLink.title(),
                 existingLink.notes(),
                 request.isActive() != null ? request.isActive() : existingLink.isActive(),

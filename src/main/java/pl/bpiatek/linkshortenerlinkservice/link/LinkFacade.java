@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static pl.bpiatek.linkshortenerlinkservice.link.UrlSanitizer.prependProtocolIfMissing;
+
 public class LinkFacade {
 
     private static final Logger log = LoggerFactory.getLogger(LinkFacade.class);
@@ -34,13 +36,15 @@ public class LinkFacade {
 
     @Transactional
     public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, Boolean isActive, String title) {
+        var cleanUrl = prependProtocolIfMissing(longUrl);
+
         var strategyType = getStrategyType(shortUrl);
         log.info("Selected link creation strategy: {}", strategyType);
         var chosenStrategy = strategies.get(strategyType);
         if (chosenStrategy == null) {
             throw new IllegalStateException("No LinkCreationStrategy bean found for type: " + strategyType);
         }
-        return chosenStrategy.createLink(userId, longUrl, shortUrl, isActive, title, eventPublisher);
+        return chosenStrategy.createLink(userId, cleanUrl, shortUrl, isActive, title, eventPublisher);
     }
 
     public LinkDto updateLink(String userId, Long linkId, UpdateLinkRequest request) {

@@ -18,6 +18,6 @@ class UrlValidatorConstraint implements ConstraintValidator<ValidUrl, String> {
             return true;
         }
 
-        return validator.isValid("http://" + value);
+        return validator.isValid("https://" + value);
     }
 }
