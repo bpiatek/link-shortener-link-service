@@ -49,8 +49,17 @@ class LinkConfig {
     }
 
     @Bean
-    LinkEventsPublisher linkCreatedPublisher(LinkCreatedKafkaProducer linkCreatedKafkaProducer, LinkUpdatedKafkaProducer linkUpdatedKafkaProducer) {
-        return new LinkEventsPublisher(linkCreatedKafkaProducer, linkUpdatedKafkaProducer);
+    LinkDeletedKafkaProducer linkDeletedKafkaProducer(
+            @Value("${topic.link.lifecycle}") String topicName,
+            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate) {
+        return new LinkDeletedKafkaProducer(topicName, kafkaTemplate);
+    }
+
+    @Bean
+    LinkEventsPublisher linkCreatedPublisher(LinkCreatedKafkaProducer linkCreatedKafkaProducer,
+                                             LinkUpdatedKafkaProducer linkUpdatedKafkaProducer,
+                                             LinkDeletedKafkaProducer linkDeletedKafkaProducer) {
+        return new LinkEventsPublisher(linkCreatedKafkaProducer, linkUpdatedKafkaProducer, linkDeletedKafkaProducer);
     }
 
     @Bean
