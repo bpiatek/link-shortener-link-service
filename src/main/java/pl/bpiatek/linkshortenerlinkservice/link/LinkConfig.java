@@ -51,8 +51,9 @@ class LinkConfig {
     @Bean
     LinkDeletedKafkaProducer linkDeletedKafkaProducer(
             @Value("${topic.link.lifecycle}") String topicName,
-            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate) {
-        return new LinkDeletedKafkaProducer(topicName, kafkaTemplate);
+            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate,
+            Clock clock) {
+        return new LinkDeletedKafkaProducer(topicName, kafkaTemplate, clock);
     }
 
     @Bean

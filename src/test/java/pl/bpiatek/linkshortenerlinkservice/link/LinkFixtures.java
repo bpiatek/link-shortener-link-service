@@ -53,6 +53,10 @@ class LinkFixtures {
         return getLinkById(generatedId);
     }
 
+    Link aLink() {
+        return aLink(TestLink.builder().build());
+    }
+
     Integer linksCountByShortUrl(String shortUrl) {
         return namedJdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM links l WHERE l.short_url = :shortUrl",

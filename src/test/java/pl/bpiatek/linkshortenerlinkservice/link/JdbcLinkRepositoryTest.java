@@ -1,14 +1,8 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import pl.bpiatek.linkshortenerlinkservice.config.ClockConfiguration;
-import pl.bpiatek.linkshortenerlinkservice.config.WithPostgresDatabase;
+import pl.bpiatek.linkshortenerlinkservice.IntegrationTest;
 
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -21,24 +15,13 @@ import static java.time.temporal.ChronoUnit.DAYS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-@JdbcTest
-@Import({JdbcLinkRepository.class, ClockConfiguration.class, LinkFixtures.class})
-@ActiveProfiles("test")
-class JdbcLinkRepositoryTest implements WithPostgresDatabase {
+class JdbcLinkRepositoryTest extends IntegrationTest {
 
     @Autowired
     LinkRepository linkRepository;
 
     @Autowired
     LinkFixtures linkFixtures;
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
-
-    @AfterEach
-    void cleanup() {
-        jdbcTemplate.update("DELETE FROM links");
-    }
 
     @Test
     void shouldSaveValidLink() {

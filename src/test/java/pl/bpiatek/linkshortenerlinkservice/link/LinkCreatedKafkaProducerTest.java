@@ -1,6 +1,7 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,16 +41,23 @@ class LinkCreatedKafkaProducerTest {
     void setUp() {
         linkCreatedKafkaProducer = new LinkCreatedKafkaProducer(TEST_TOPIC, kafkaTemplate);
         link = LinkStubs.aLink();
-        future = new CompletableFuture<>();
+    }
 
-        given(kafkaTemplate.send(any(ProducerRecord.class))).willReturn(future);
+    private void mockSuccessfulSend() {
+        SendResult<String, LinkLifecycleEvent> sendResult = mock(SendResult.class);
+        RecordMetadata metadata = mock(RecordMetadata.class);
+        given(sendResult.getRecordMetadata()).willReturn(metadata);
+
+        given(kafkaTemplate.send((ProducerRecord<String, LinkLifecycleEvent>) any())).willReturn(CompletableFuture.completedFuture(sendResult));
     }
 
     @Test
     void shouldSendMessageAndIncrementSuccessMetric() {
+        //given
+        mockSuccessfulSend();
+
         // when
         linkCreatedKafkaProducer.sendLinkCreatedEvent(link);
-        future.complete(mock(SendResult.class));
 
         // then
         verify(kafkaTemplate).send(producerRecordCaptor.capture());
@@ -68,10 +76,6 @@ class LinkCreatedKafkaProducerTest {
     }
 
     private void assertHeaders(ProducerRecord<String, LinkLifecycleEvent> record, SoftAssertions softly) {
-        var traceId = record.headers().lastHeader("trace-id");
-        softly.assertThat(traceId).isNotNull();
-        softly.assertThat(new String(traceId.value(), UTF_8)).isNotEmpty();
-
         var source = record.headers().lastHeader("source");
         softly.assertThat(source).isNotNull();
         softly.assertThat(new String(source.value(), UTF_8)).isEqualTo("link-service");

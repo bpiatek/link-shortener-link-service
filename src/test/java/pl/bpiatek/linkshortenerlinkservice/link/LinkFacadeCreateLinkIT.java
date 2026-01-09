@@ -1,20 +1,18 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import pl.bpiatek.linkshortenerlinkservice.config.WithFullInfrastructure;
+import pl.bpiatek.linkshortenerlinkservice.IntegrationTest;
 import pl.bpiatek.linkshortenerlinkservice.exception.ShortCodeAlreadyExistsException;
 
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
+import static pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent.EventPayloadCase.LINK_CREATED;
 
-@ActiveProfiles("test")
-@SpringBootTest
-class LinkFacadeTest implements WithFullInfrastructure {
+class LinkFacadeCreateLinkIT extends IntegrationTest {
 
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
@@ -24,15 +22,7 @@ class LinkFacadeTest implements WithFullInfrastructure {
     private LinkFacade linkFacade;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Autowired
     private LinkFixtures linkFixtures;
-
-    @AfterEach
-    void cleanup() {
-        jdbcTemplate.update("DELETE FROM links");
-    }
 
     @Test
     void shouldCreateLinkWithCustomShortUrl() {
@@ -49,6 +39,34 @@ class LinkFacadeTest implements WithFullInfrastructure {
             s.assertThat(response.shortUrl()).endsWith(customShortUrl);
             s.assertThat(response.longUrl()).isEqualTo(LONG_URL);
             s.assertThat(link.title()).isEqualTo(TITLE);
+        });
+    }
+
+    @Test
+    void shouldSendEventWhenLinkIsCreated() throws InterruptedException {
+        // given
+        var customShortUrl = "test-url";
+
+        // when
+        linkFacade.createLink(USER_ID, LONG_URL, customShortUrl, true, "test-title");
+
+        // then
+        var record = testLinkLifecycleEventConsumer.awaitRecord(5, TimeUnit.SECONDS);
+        assertThat(record).isNotNull();
+
+        var link = linkFixtures.getLinkByShortUrl(customShortUrl);
+        assertThat(link).isNotNull();
+
+        assertSoftly(s -> {
+            var envelope = record.value();
+            s.assertThat(envelope.getEventPayloadCase()).isEqualTo(LINK_CREATED);
+
+            var message = envelope.getLinkCreated();
+            s.assertThat(message.getLinkId()).isEqualTo(String.valueOf(link.id()));
+            s.assertThat(message.getShortUrl()).isEqualTo(link.shortUrl());
+            s.assertThat(message.getTitle()).isEqualTo(link.title());
+            s.assertThat(message.getCreatedAt().getNanos()).isEqualTo(link.createdAt().getNano());
+            s.assertThat(message.getIsActive()).isEqualTo(link.isActive());
         });
     }
 
@@ -80,5 +98,4 @@ class LinkFacadeTest implements WithFullInfrastructure {
             s.assertThat(count).isEqualTo(1);
         });
     }
-
 }

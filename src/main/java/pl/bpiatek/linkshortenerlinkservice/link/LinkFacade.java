@@ -60,6 +60,7 @@ public class LinkFacade {
     }
 
     public void deleteLink(String userId, Long linkId) {
+        log.info("Deleting link with ID: {}", linkId);
         linkManipulationService.deleteLink(userId, linkId);
     }
 

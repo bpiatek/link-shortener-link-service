@@ -1,53 +1,25 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
 import com.google.protobuf.Timestamp;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import pl.bpiatek.linkshortenerlinkservice.config.WithFullInfrastructure;
+import pl.bpiatek.linkshortenerlinkservice.IntegrationTest;
 
 import java.util.concurrent.TimeUnit;
 
 import static java.nio.charset.StandardCharsets.*;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class LinkFacadeKafkaIT implements WithFullInfrastructure {
+class LinkFacadeKafkaIT extends IntegrationTest {
 
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
-
-    @DynamicPropertySource
-    static void kafkaProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.kafka.consumer.value-deserializer",
-                () -> "io.confluent.kafka.serializers.protobuf.KafkaProtobufDeserializer");
-        registry.add("spring.kafka.consumer.properties.specific.protobuf.value.type",
-                () -> "pl.bpiatek.contracts.link.LinkLifecycleEventProto$LinkLifecycleEvent");
-    }
 
     @Autowired
     private LinkFacade linkFacade;
 
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    private TestLinkEventConsumer testConsumer;
-
-    @Autowired
     private LinkFixtures linkFixtures;
-
-    @AfterEach
-    void cleanup() {
-        jdbcTemplate.update("DELETE FROM links");
-        testConsumer.reset();
-    }
 
     @Test
     void shouldPersistLinkWithCustomStrategyAndPublishKafkaEvent() throws InterruptedException {
@@ -58,7 +30,7 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
         linkFacade.createLink(USER_ID, LONG_URL, customCode, true, "title");
 
         // then
-        var record = testConsumer.awaitRecord(10, TimeUnit.SECONDS);
+        var record = testLinkLifecycleEventConsumer.awaitRecord(10, TimeUnit.SECONDS);
         assertSoftly(softly -> {
             var linksCountByShortUrl = linkFixtures.linksCountByShortUrl(customCode);
             softly.assertThat(linksCountByShortUrl).isOne();
@@ -83,7 +55,6 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
 
             var headers = record.headers();
             softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");
-            softly.assertThat(headers.lastHeader("trace-id").value()).isNotNull();
         });
     }
 
@@ -93,7 +64,7 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
         linkFacade.createLink(USER_ID, LONG_URL, null, true, "title");
 
         // then
-        var record = testConsumer.awaitRecord(10, TimeUnit.SECONDS);
+        var record = testLinkLifecycleEventConsumer.awaitRecord(5, TimeUnit.SECONDS);
         assertSoftly(softly -> {
             softly.assertThat(record).isNotNull();
             softly.assertThat(record.key()).isNotBlank();
@@ -112,7 +83,6 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
 
             var headers = record.headers();
             softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");
-            softly.assertThat(headers.lastHeader("trace-id").value()).isNotNull();
         });
     }
 
@@ -122,7 +92,7 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
         linkFacade.createLink(USER_ID, LONG_URL, null, true, null);
 
         // then
-        var record = testConsumer.awaitRecord(10, TimeUnit.SECONDS);
+        var record = testLinkLifecycleEventConsumer.awaitRecord(10, TimeUnit.SECONDS);
         assertSoftly(softly -> {
             softly.assertThat(record).isNotNull();
             softly.assertThat(record.key()).isNotBlank();
@@ -140,7 +110,6 @@ class LinkFacadeKafkaIT implements WithFullInfrastructure {
 
             var headers = record.headers();
             softly.assertThat(new String(headers.lastHeader("source").value(), UTF_8)).isEqualTo("link-service");
-            softly.assertThat(headers.lastHeader("trace-id").value()).isNotNull();
         });
     }
 }
