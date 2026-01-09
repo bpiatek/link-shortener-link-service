@@ -9,14 +9,17 @@ class CustomShortUrlCreationStrategy implements LinkCreationStrategy {
 
     private final LinkRepository linkRepository;
     private final LinkMapper linkMapper;
+    private final ReservedWordsValidator reservedWordsValidator;
 
-    CustomShortUrlCreationStrategy(LinkRepository linkRepository, LinkMapper linkMapper) {
+    CustomShortUrlCreationStrategy(LinkRepository linkRepository, LinkMapper linkMapper, ReservedWordsValidator reservedWordsValidator) {
         this.linkRepository = linkRepository;
         this.linkMapper = linkMapper;
+        this.reservedWordsValidator = reservedWordsValidator;
     }
 
     @Override
     public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, boolean isActive, String title, ApplicationEventPublisher eventPublisher) {
+        reservedWordsValidator.validate(shortUrl);
         try {
             var linkToSave = linkMapper.toLink(userId, longUrl, shortUrl, isActive, title);
             var savedLink = linkRepository.save(linkToSave);

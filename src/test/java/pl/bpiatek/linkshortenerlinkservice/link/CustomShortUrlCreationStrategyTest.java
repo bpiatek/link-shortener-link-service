@@ -9,7 +9,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import pl.bpiatek.linkshortenerlinkservice.exception.ReservedShortUrlException;
 import pl.bpiatek.linkshortenerlinkservice.exception.ShortCodeAlreadyExistsException;
+
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -43,7 +46,8 @@ class CustomShortUrlCreationStrategyTest {
 
     @BeforeEach
     void setUp() {
-        strategy = new CustomShortUrlCreationStrategy(linkRepository, linkMapper);
+        var reservedWordsValidator = new ReservedWordsValidator(Set.of("dashboard", "login"));
+        strategy = new CustomShortUrlCreationStrategy(linkRepository, linkMapper, reservedWordsValidator);
     }
 
     @Test
@@ -72,6 +76,28 @@ class CustomShortUrlCreationStrategyTest {
         assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, customShortUrl, true, TITLE, eventPublisher))
                 .isInstanceOf(ShortCodeAlreadyExistsException.class);
         verify(linkRepository).save(any(Link.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenReserveShortUrlProvided() {
+        // given
+        var reservedShortUrl = "dashboard";
+
+        // then
+        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, reservedShortUrl, true, TITLE, eventPublisher))
+                .isInstanceOf(ReservedShortUrlException.class)
+                .hasMessageContaining("Short URL 'dashboard' is reserved and cannot be used.");
+    }
+
+    @Test
+    void shouldThrowExceptionWhenReserveShortUrlWithSlashProvided() {
+        // given
+        var reservedShortUrl = "dashboard/links/123/edit";
+
+        // then
+        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, reservedShortUrl, true, TITLE, eventPublisher))
+                .isInstanceOf(ReservedShortUrlException.class)
+                .hasMessageContaining("Short URL 'dashboard/links/123/edit' is reserved and cannot be used.");
     }
 
     private Link givenSuccessfulSave(String uniqueShortUrl) {

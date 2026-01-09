@@ -156,6 +156,25 @@ class GlobalExceptionHandler {
         return new ResponseEntity<>(apiError, BAD_REQUEST);
     }
 
+    @ExceptionHandler(ReservedShortUrlException.class)
+    public ResponseEntity<ApiError> handleReservedShortUrl(
+            ReservedShortUrlException ex, HttpServletRequest request) {
+
+        log.warn("Reserved short URL usage attempt: {}", ex.getMessage());
+
+        var apiError = new ApiError(
+                clock.instant(),
+                "/errors/reserved-short-url",
+                "Reserved Short URL",
+                BAD_REQUEST.value(),
+                ex.getMessage(),
+                request.getRequestURI(),
+                null
+        );
+
+        return new ResponseEntity<>(apiError, BAD_REQUEST);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGenericExceptions(
             Exception ex, HttpServletRequest request) {

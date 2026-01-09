@@ -10,6 +10,7 @@ import pl.bpiatek.contracts.link.LinkLifecycleEventProto;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 class LinkConfig {
@@ -30,8 +31,13 @@ class LinkConfig {
     }
 
     @Bean
-    CustomShortUrlCreationStrategy customCodeCreationStrategy(LinkRepository linkRepository, LinkMapper linkMapper) {
-        return new CustomShortUrlCreationStrategy(linkRepository, linkMapper);
+    ReservedWordsValidator reservedWordsValidator(@Value("${link.reserved-words}") Set<String> reservedWords) {
+        return new ReservedWordsValidator(reservedWords);
+    }
+
+    @Bean
+    CustomShortUrlCreationStrategy customCodeCreationStrategy(LinkRepository linkRepository, LinkMapper linkMapper, ReservedWordsValidator reservedWordsValidator) {
+        return new CustomShortUrlCreationStrategy(linkRepository, linkMapper, reservedWordsValidator);
     }
 
     @Bean
