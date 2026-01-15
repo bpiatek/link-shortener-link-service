@@ -15,8 +15,8 @@ class LinkMapper {
         return new CreateLinkResponse(baseLinkUrl + link.shortUrl(), link.longUrl());
     }
 
-    Link toLink(String userId, String longUrl, String shortUrl, boolean isActive, String title) {
-        return new Link(userId, shortUrl, longUrl, isActive, title);
+    Link toLink(String userId, String longUrl, String shortUrl, boolean isActive, boolean isCustom, String title) {
+        return new Link(userId, shortUrl, longUrl, isActive, isCustom, title);
     }
 
     LinkDto toLinkDto(Link link) {

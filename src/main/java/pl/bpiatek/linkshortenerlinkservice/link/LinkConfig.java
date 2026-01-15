@@ -77,8 +77,12 @@ class LinkConfig {
     }
 
     @Bean
-    LinkManipulationService linkUpdateService(LinkRepository linkRepository, ApplicationEventPublisher eventPublisher, Clock clock, LinkMapper linkMapper) {
-        return new LinkManipulationService(linkRepository, eventPublisher, clock, linkMapper);
+    LinkManipulationService linkManipulationService(LinkRepository linkRepository,
+                                                    ApplicationEventPublisher eventPublisher,
+                                                    Clock clock,
+                                                    LinkMapper linkMapper,
+                                                    @Value("${link.delete.deactivated.custom.older.than.days}") Integer days) {
+        return new LinkManipulationService(linkRepository, eventPublisher, clock, linkMapper, days);
     }
 
     @Bean
@@ -92,5 +96,10 @@ class LinkConfig {
                           LinkManipulationService linkManipulationService,
                           LinkRetriever linkRetriever) {
         return new LinkFacade(strategyList, eventPublisher, linkManipulationService, linkRetriever);
+    }
+
+    @Bean
+    LinkCleanupScheduler linkCleanupScheduler(LinkManipulationService linkManipulationService) {
+        return new LinkCleanupScheduler(linkManipulationService);
     }
 }

@@ -10,6 +10,7 @@ public class TestLink {
     private final String title;
     private final String notes;
     private final boolean isActive;
+    private final boolean isCustom;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final LocalDateTime expiredAt;
@@ -22,6 +23,7 @@ public class TestLink {
         this.title = builder.title;
         this.notes = builder.notes;
         this.isActive = builder.isActive;
+        this.isCustom = builder.isCustom;
         this.createdAt = builder.createdAt;
         this.updatedAt = builder.updatedAt;
         this.expiredAt = builder.expiredAt;
@@ -71,6 +73,11 @@ public class TestLink {
         return expiredAt;
     }
 
+    public boolean isCustom() {
+        return isCustom;
+    }
+
+
     public static class TestLinkBuilder {
         private Long id;
         private String userId = "123";
@@ -79,6 +86,7 @@ public class TestLink {
         private String title = "Example Title";
         private String notes = "Some notes";
         private boolean isActive;
+        private boolean isCustom;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private LocalDateTime expiredAt;
@@ -130,6 +138,11 @@ public class TestLink {
 
         public TestLinkBuilder expiredAt(LocalDateTime expiredAt) {
             this.expiredAt = expiredAt;
+            return this;
+        }
+
+        public TestLinkBuilder isCustom(boolean isCustom) {
+            this.isCustom = isCustom;
             return this;
         }
 

@@ -105,7 +105,7 @@ class CustomShortUrlCreationStrategyTest {
         var savedLink = aSavedLinkWithShortUrl(1L, uniqueShortUrl);
         var response = aCreateLinkResponseWithShortUrl(uniqueShortUrl);
 
-        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl), anyBoolean(), anyString())).willReturn(linkToSave);
+        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl), anyBoolean(), anyBoolean(), anyString())).willReturn(linkToSave);
         given(linkRepository.save(linkToSave)).willReturn(savedLink);
         given(linkMapper.toCreateLinkResponse(savedLink)).willReturn(response);
 
@@ -114,7 +114,7 @@ class CustomShortUrlCreationStrategyTest {
 
     private void givenCollisionOnSave(String collidingShortUrl) {
         var link = aLinkWithShortUrl(collidingShortUrl);
-        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl), anyBoolean(), anyString())).willReturn(link);
+        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl), anyBoolean(), anyBoolean(), anyString())).willReturn(link);
         given(linkRepository.save(link)).willThrow(new DataIntegrityViolationException("Collision!"));
     }
 }

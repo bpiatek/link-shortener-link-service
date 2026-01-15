@@ -41,6 +41,7 @@ class JdbcLinkRepository implements LinkRepository {
         params.put("title", link.title());
         params.put("notes", link.notes());
         params.put("is_active", link.isActive());
+        params.put("is_custom", link.isCustom());
         params.put("created_at", createdAt);
         params.put("updated_at", providedDateOr(link.updatedAt(), now));
         params.put("expires_at", providedDateOr(link.expiresAt(), now.plus(7, DAYS)));
@@ -54,7 +55,7 @@ class JdbcLinkRepository implements LinkRepository {
     @Override
     public Optional<Link> findByShortUrl(String shortUrl) {
         var sql = """
-                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
+                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.is_custom, l.created_at, l.updated_at, l.expires_at
                 FROM links l
                 WHERE l.short_url = :shortUrl""";
 
@@ -65,7 +66,7 @@ class JdbcLinkRepository implements LinkRepository {
     @Override
     public List<Link> findByUserId(String userId) {
         var sql = """
-                 SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
+                 SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.is_custom, l.created_at, l.updated_at, l.expires_at
                  FROM links l
                  WHERE l.user_id = :userId""";
 
@@ -96,7 +97,7 @@ class JdbcLinkRepository implements LinkRepository {
     @Override
     public Optional<Link> findByIdAndUserId(Long id, String userId) {
         var sql = """
-                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
+                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.is_custom, l.created_at, l.updated_at, l.expires_at
                 FROM links l
                 WHERE l.id = :id AND l.user_id = :userId""";
 
@@ -109,6 +110,21 @@ class JdbcLinkRepository implements LinkRepository {
     public void deleteByIdAndUserId(Long id, String userId) {
         var sql = "DELETE FROM links WHERE id = :id AND user_id = :userId";
         namedJdbcTemplate.update(sql, Map.of("id", id, "userId", userId));
+    }
+
+    @Override
+    public int deleteDeactivatedCustomLinksOlderThan(Instant cutoffDate) {
+        var sql = """
+            DELETE FROM links
+            WHERE is_custom = true
+              AND is_active = false
+              AND updated_at < :cutoffDate
+            """;
+        
+        var params = new MapSqlParameterSource()
+                .addValue("cutoffDate", Timestamp.from(cutoffDate));
+        
+        return namedJdbcTemplate.update(sql, params);
     }
 
     private Timestamp providedDateOr(Instant provided, Instant or) {
@@ -125,6 +141,7 @@ class JdbcLinkRepository implements LinkRepository {
             rs.getString("title"),
             rs.getString("notes"),
             rs.getBoolean("is_active"),
+            rs.getBoolean("is_custom"),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("updated_at").toInstant(),
             Optional.ofNullable(rs.getTimestamp("expires_at")).map(Timestamp::toInstant).orElse(null)

@@ -21,7 +21,7 @@ class CustomShortUrlCreationStrategy implements LinkCreationStrategy {
     public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, boolean isActive, String title, ApplicationEventPublisher eventPublisher) {
         reservedWordsValidator.validate(shortUrl);
         try {
-            var linkToSave = linkMapper.toLink(userId, longUrl, shortUrl, isActive, title);
+            var linkToSave = linkMapper.toLink(userId, longUrl, shortUrl, isActive, true, title);
             var savedLink = linkRepository.save(linkToSave);
 
             eventPublisher.publishEvent(new LinkCreatedApplicationEvent(savedLink));

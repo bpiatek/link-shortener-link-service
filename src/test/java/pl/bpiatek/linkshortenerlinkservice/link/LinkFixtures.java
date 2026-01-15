@@ -42,6 +42,7 @@ class LinkFixtures {
                 "title", link.getTitle(),
                 "notes", link.getNotes(),
                 "is_active", link.isActive(),
+                "is_custom", link.isCustom(),
                 "created_at", getProvidedDateOr(link.getCreatedAt(), now),
                 "updated_at", getProvidedDateOr(link.getUpdatedAt(), now),
                 "expires_at", getProvidedDateOr(link.getExpiredAt(), now.plus(7, DAYS))
@@ -70,7 +71,7 @@ class LinkFixtures {
 
     Link getLinkByShortUrl(String shortUrl) {
         var sql = """
-                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
+                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.is_custom, l.created_at, l.updated_at, l.expires_at
                 FROM links l
                 WHERE l.short_url = :short_url""";
 
@@ -82,7 +83,7 @@ class LinkFixtures {
 
     Link getLinkById(Long id) {
         var sql = """
-                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.created_at, l.updated_at, l.expires_at
+                SELECT l.id, l.user_id, l.short_url, l.long_url, l.title, l.notes, l.is_active, l.is_custom, l.created_at, l.updated_at, l.expires_at
                 FROM links l
                 WHERE l.id = :id""";
 
@@ -106,6 +107,7 @@ class LinkFixtures {
             rs.getString("title"),
             rs.getString("notes"),
             rs.getBoolean("is_active"),
+            rs.getBoolean("is_custom"),
             rs.getTimestamp("created_at").toInstant(),
             rs.getTimestamp("updated_at").toInstant(),
             Optional.ofNullable(rs.getTimestamp("expires_at")).map(Timestamp::toInstant).orElse(null)

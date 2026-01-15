@@ -28,7 +28,7 @@ class RandomShortUrlCreationStrategy implements LinkCreationStrategy {
         for (int i = 0; i < MAX_GENERATION_ATTEMPTS; i++) {
             var generatedShortUrl = shortUrlGenerator.generate();
             try {
-                var linkToSave = linkMapper.toLink(userId, longUrl, generatedShortUrl, isActive, title);
+                var linkToSave = linkMapper.toLink(userId, longUrl, generatedShortUrl, isActive, false, title);
                 var savedLink = linkRepository.save(linkToSave);
 
                 eventPublisher.publishEvent(new LinkCreatedApplicationEvent(savedLink));

@@ -8,6 +8,7 @@ import pl.bpiatek.linkshortenerlinkservice.exception.LinkNotFoundException;
 
 import java.time.Clock;
 
+import static java.time.temporal.ChronoUnit.DAYS;
 import static pl.bpiatek.linkshortenerlinkservice.link.UrlSanitizer.prependProtocolIfMissing;
 
 class LinkManipulationService {
@@ -16,16 +17,19 @@ class LinkManipulationService {
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final LinkMapper linkMapper;
+    private final  Integer olderThanInDays;
 
     LinkManipulationService(
             LinkRepository linkRepository,
             ApplicationEventPublisher eventPublisher,
             Clock clock,
-            LinkMapper linkMapper) {
+            LinkMapper linkMapper,
+            Integer days) {
         this.linkRepository = linkRepository;
         this.eventPublisher = eventPublisher;
         this.clock = clock;
         this.linkMapper = linkMapper;
+        this.olderThanInDays = days;
     }
 
     @Transactional
@@ -46,6 +50,7 @@ class LinkManipulationService {
                 request.title() != null ? request.title() : existingLink.title(),
                 existingLink.notes(),
                 request.isActive() != null ? request.isActive() : existingLink.isActive(),
+                existingLink.isCustom(),
                 existingLink.createdAt(),
                 clock.instant(),
                 existingLink.expiresAt()
@@ -66,5 +71,11 @@ class LinkManipulationService {
         linkRepository.deleteByIdAndUserId(linkId, userId);
 
         eventPublisher.publishEvent(new LinkDeletedApplicationEvent(link));
+    }
+
+    @Transactional
+    public int releaseDeactivatedVanityLinks() {
+        var cutoffDate = clock.instant().minus(olderThanInDays, DAYS);
+        return linkRepository.deleteDeactivatedCustomLinksOlderThan(cutoffDate);
     }
 }

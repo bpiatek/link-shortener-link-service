@@ -38,6 +38,7 @@ class JdbcLinkRepositoryTest extends IntegrationTest {
                 "Example Title",
                 "Some notes",
                 true,
+                false,
                 now,
                 now,
                 now.plus(7, DAYS)
@@ -57,6 +58,7 @@ class JdbcLinkRepositoryTest extends IntegrationTest {
             s.assertThat(savedLink.title()).isEqualTo(link.title());
             s.assertThat(savedLink.notes()).isEqualTo(link.notes());
             s.assertThat(savedLink.isActive()).isEqualTo(link.isActive());
+            s.assertThat(savedLink.isCustom()).isEqualTo(link.isCustom());
             s.assertThat(savedLink.createdAt()).isEqualTo(link.createdAt());
             s.assertThat(savedLink.updatedAt()).isEqualTo(link.updatedAt());
             s.assertThat(savedLink.expiresAt()).isEqualTo(link.expiresAt());
@@ -159,6 +161,7 @@ class JdbcLinkRepositoryTest extends IntegrationTest {
                     title,
                     notes,
                     is_active,
+                    is_custom,
                     created_at,
                     updated_at,
                     expires_at
@@ -173,6 +176,7 @@ class JdbcLinkRepositoryTest extends IntegrationTest {
                 rs.getString("title"),
                 rs.getString("notes"),
                 rs.getBoolean("is_active"),
+                rs.getBoolean("is_custom"),
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant(),
                 Optional.ofNullable(rs.getTimestamp("expires_at")).map(Timestamp::toInstant).orElse(null)
