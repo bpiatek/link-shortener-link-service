@@ -10,7 +10,7 @@ public record CreateLinkRequest(
         @ValidUrl(message = "A valid URL format is required.")
         @Size(max = 1024, message = "The destination URL cannot exceed 1024 characters.")
         String longUrl,
-        @Pattern(regexp = "^[a-zA-Z0-9-_]+$", message = "Short URL can only contain alphanumeric characters, hyphens, and underscores.")
+        @Pattern(regexp = "^$|^[a-zA-Z0-9-_]+$", message = "Short URL can only contain alphanumeric characters, hyphens, and underscores.")
         String shortUrl,
         Boolean isActive,
         @Size(max = 255, message = "The title cannot exceed 255 characters.")
