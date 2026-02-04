@@ -12,12 +12,19 @@ on:
           - dev
           - prod
 
+  push:
+    branches:
+      - main
+      # Add whatever branch you want to trigger builds automatically
+
 jobs:
   build-and-deploy:
     name: Build and Deploy to ${{ github.event.inputs.environment }}
     runs-on: java21-build
     env:
       DOCKER_BUILDKIT: 1
+      # Create a variable that determines the env:
+      TARGET_ENV: ${{ github.event.inputs.environment || 'dev' }}
 
     steps:
       - name: Checkout Code
@@ -39,6 +46,14 @@ jobs:
               </servers>
             </settings>" > "$SETTINGS_FILE"
           echo "Maven settings.xml for Docker created."
+
+      - name: Run Maven Tests
+        run: |
+          echo "Running unit tests..."
+          # We use the settings.xml created above. 
+          # If tests fail, 'mvn' returns exit code 1, and the pipeline STOPS here.
+          mvn -s settings.xml clean test
+          echo "✅ Tests passed successfully."
 
       - name: Get Image Tag and Name
         id: image_info
@@ -67,13 +82,13 @@ jobs:
       - name: Run Helm Upgrade
         run: |
           set -euo pipefail
-          echo "Deploying with Helm..."
+          echo "Deploying with Helm to: $TARGET_ENV"
           sudo /snap/bin/microk8s helm upgrade --install \
-            link-shortener-link-service-${{ github.event.inputs.environment }} \
+            link-shortener-link-service-$TARGET_ENV \
             ./helm \
-            --namespace ${{ github.event.inputs.environment }} \
-            --values helm/values-${{ github.event.inputs.environment }}.yaml \
+            --namespace $TARGET_ENV \
+            --values helm/values-$TARGET_ENV.yaml \
             --set image.repository=${{ steps.image_info.outputs.name }} \
             --set image.tag=${{ steps.image_info.outputs.tag }} \
-            --set spring.profiles.active=${{ github.event.inputs.environment }}
+            --set spring.profiles.active=$TARGET_ENV
           echo "Helm deployment finished."
