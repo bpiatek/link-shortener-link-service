@@ -11,11 +11,9 @@ on:
         options:
           - dev
           - prod
-
   push:
     branches:
       - main
-      # Add whatever branch you want to trigger builds automatically
 
 jobs:
   build-and-deploy:
@@ -23,7 +21,6 @@ jobs:
     runs-on: java21-build
     env:
       DOCKER_BUILDKIT: 1
-      # Create a variable that determines the env:
       TARGET_ENV: ${{ github.event.inputs.environment || 'dev' }}
 
     steps:
@@ -52,8 +49,8 @@ jobs:
           echo "Running unit tests..."
           # We use the settings.xml created above. 
           # If tests fail, 'mvn' returns exit code 1, and the pipeline STOPS here.
-          mvn -s settings.xml clean test
-          echo "✅ Tests passed successfully."
+          mvn -s settings.xml clean verify
+          echo "Tests passed successfully."
 
       - name: Get Image Tag and Name
         id: image_info
