@@ -34,7 +34,6 @@ class LinkManipulationService {
 
     @Transactional
     LinkDto update(String userId, Long linkId, UpdateLinkRequest request) {
-
         var existingLink = linkRepository.findByIdAndUserId(linkId, userId)
                 .orElseThrow(() -> new LinkNotFoundException("Link not found or access denied"));
 
@@ -68,7 +67,7 @@ class LinkManipulationService {
         var link = linkRepository.findByIdAndUserId(linkId, userId)
                 .orElseThrow(() -> new LinkNotFoundException("Link not found or access denied"));
 
-        linkRepository.deleteByIdAndUserId(linkId, userId);
+        linkRepository.deleteByIdAndUserId(link);
 
         eventPublisher.publishEvent(new LinkDeletedApplicationEvent(link));
     }

@@ -8,9 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkCreated;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
-import pl.bpiatek.linkshortenerlinkservice.exception.KafkaEventSendingException;
 
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.CompletionException;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -50,20 +49,19 @@ class LinkCreatedKafkaProducer {
         producerRecord.headers().add(new RecordHeader("source", SOURCE_HEADER_VALUE.getBytes(UTF_8)));
 
         try {
-            var result = kafkaTemplate.send(producerRecord).get();
+            var result = kafkaTemplate.send(producerRecord).join();
+
             log.info("Successfully published LinkCreated event for link ID: {} to partition: {} offset: {}",
                     link.id(),
                     result.getRecordMetadata().partition(),
                     result.getRecordMetadata().offset());
-        } catch (ExecutionException e) {
+        } catch (CompletionException e) {
+            var realCause = e.getCause() != null ? e.getCause() : e;
+
             log.error("Failed to publish LinkCreated event for link ID: {}. Reason: {}",
-                    link.id(),
-                    e.getMessage(),
-                    e);
-            throw new KafkaEventSendingException("Failed to send PasswordReset event.");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while sending PasswordReset event.", e);
+                    link.id(), e.getMessage(), realCause);
+
+            throw new RuntimeException("Kafka send failed", realCause);
         }
     }
 }

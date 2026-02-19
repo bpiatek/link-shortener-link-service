@@ -6,7 +6,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 @Component
@@ -15,24 +17,22 @@ public class TestKafkaConsumer<T> {
 
     private static final Logger log = LoggerFactory.getLogger(TestKafkaConsumer.class);
 
-    private CountDownLatch latch = new CountDownLatch(1);
-    private ConsumerRecord<String, T> payload;
+    private final BlockingQueue<ConsumerRecord<String, T>> records = new LinkedBlockingQueue<>();
 
     public void handle(ConsumerRecord<String, T> record) {
-        log.info("Test consumer received record with key: '{}' and payload '{}'", record.key(), record.value());
-        payload = record;
-        latch.countDown();
+        log.info("Test consumer received record: {}", record.key());
+        records.add(record);
     }
 
     public ConsumerRecord<String, T> awaitRecord(long timeout, TimeUnit unit) throws InterruptedException {
-        if (!latch.await(timeout, unit)) {
-            throw new IllegalStateException("No event received in the allotted time");
+        var record = records.poll(timeout, unit);
+        if (record == null) {
+            throw new IllegalStateException("No event received in the allotted time (" + timeout + " " + unit + ")");
         }
-        return payload;
+        return record;
     }
 
     public void reset() {
-        latch = new CountDownLatch(1);
-        payload = null;
+        records.clear();
     }
 }

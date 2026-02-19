@@ -37,7 +37,6 @@ public class LinkFacade {
         this.linkRetriever = linkRetriever;
     }
 
-    @Transactional
     public CreateLinkResponse createLink(String userId, String longUrl, String shortUrl, Boolean isActive, String title) {
         var cleanUrl = prependProtocolIfMissing(longUrl);
 

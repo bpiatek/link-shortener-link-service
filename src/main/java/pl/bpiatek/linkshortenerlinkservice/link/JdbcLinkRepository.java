@@ -4,6 +4,8 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -20,20 +22,37 @@ class JdbcLinkRepository implements LinkRepository {
     private final NamedParameterJdbcTemplate namedJdbcTemplate;
     private final SimpleJdbcInsert linkInsert;
     private final Clock clock;
+    private final OutboxRepository outboxRepository;
 
-    JdbcLinkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock) {
+    JdbcLinkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock, OutboxRepository outboxRepository) {
         this.namedJdbcTemplate = namedJdbcTemplate;
         this.linkInsert = new SimpleJdbcInsert(namedJdbcTemplate.getJdbcTemplate())
                 .withTableName("links")
                 .usingGeneratedKeyColumns("id");
         this.clock = clock;
+        this.outboxRepository = outboxRepository;
     }
 
     @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Link save(Link link) {
         var now = clock.instant();
         var createdAt = providedDateOr(link.createdAt(), now);
+        var params = buildInsertParams(link, createdAt, now);
 
+        var key = linkInsert.executeAndReturnKey(params);
+        var savedLink = link.withIdAndCreatedAt(key.longValue(), createdAt.toInstant());
+
+        outboxRepository.saveEvent(
+                String.valueOf(savedLink.id()),
+                LinkEventType.LINK_CREATED,
+                savedLink
+        );
+
+        return savedLink;
+    }
+
+    private Map<String, Object> buildInsertParams(Link link, Timestamp createdAt, Instant now) {
         var params = new HashMap<String, Object>();
         params.put("user_id", link.userId());
         params.put("short_url", link.shortUrl());
@@ -45,11 +64,7 @@ class JdbcLinkRepository implements LinkRepository {
         params.put("created_at", createdAt);
         params.put("updated_at", providedDateOr(link.updatedAt(), now));
         params.put("expires_at", providedDateOr(link.expiresAt(), now.plus(7, DAYS)));
-
-        var key = linkInsert.executeAndReturnKey(params);
-        long generatedId = key.longValue();
-
-        return link.withIdAndCreatedAt(generatedId, createdAt.toInstant());
+        return params;
     }
 
     @Override
@@ -75,6 +90,9 @@ class JdbcLinkRepository implements LinkRepository {
 
     @Override
     public void update(Link link) {
+        var now = clock.instant();
+        var updatedLink = link.withUpdatedAt(now);
+
         var sql = """
             UPDATE links
             SET long_url = :longUrl,
@@ -89,9 +107,15 @@ class JdbcLinkRepository implements LinkRepository {
                 .addValue("longUrl", link.longUrl())
                 .addValue("title", link.title())
                 .addValue("isActive", link.isActive())
-                .addValue("updatedAt", Timestamp.from(clock.instant()));
+                .addValue("updatedAt", Timestamp.from(now));
 
         namedJdbcTemplate.update(sql, params);
+
+        outboxRepository.saveEvent(
+                String.valueOf(link.id()),
+                LinkEventType.LINK_UPDATED,
+                updatedLink
+        );
     }
 
     @Override
@@ -107,9 +131,21 @@ class JdbcLinkRepository implements LinkRepository {
     }
 
     @Override
-    public void deleteByIdAndUserId(Long id, String userId) {
+    public void deleteByIdAndUserId(Link link) {
         var sql = "DELETE FROM links WHERE id = :id AND user_id = :userId";
-        namedJdbcTemplate.update(sql, Map.of("id", id, "userId", userId));
+
+        var params = new MapSqlParameterSource()
+                .addValue("id", link.id())
+                .addValue("userId", link.userId());
+
+        int deletedRows = namedJdbcTemplate.update(sql, params);
+
+        if (deletedRows > 0) {
+            outboxRepository.saveEvent(
+                    String.valueOf(link.id()),
+                    LinkEventType.LINK_DELETED,
+                    link);
+        }
     }
 
     @Override
@@ -127,10 +163,10 @@ class JdbcLinkRepository implements LinkRepository {
         return namedJdbcTemplate.update(sql, params);
     }
 
-    private Timestamp providedDateOr(Instant provided, Instant or) {
+    private Timestamp providedDateOr(Instant provided, Instant fallback) {
         return provided != null
                 ? Timestamp.from(provided)
-                : Timestamp.from(or);
+                : Timestamp.from(fallback);
     }
 
     private static final RowMapper<Link> LINK_ROW_MAPPER = (rs, rowNum) -> new Link(

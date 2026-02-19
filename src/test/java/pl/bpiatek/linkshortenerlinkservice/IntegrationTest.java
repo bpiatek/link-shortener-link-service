@@ -79,11 +79,14 @@ public abstract class IntegrationTest {
 
         registry.add("spring.kafka.producer.properties.auto.register.schemas", () -> "true");
         registry.add("spring.kafka.producer.properties.use.latest.version", () -> "false");
+
+        registry.add("app.scheduling.enable-sweeper", () -> "false");
     }
 
     @AfterEach
     void tearDown() {
-        jdbcTemplate.update("DELETE FROM links");
+        jdbcTemplate.execute("TRUNCATE TABLE links RESTART IDENTITY CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE outbox_events");
 
         mutableClock.setInstant(DEFAULT_NOW);
 

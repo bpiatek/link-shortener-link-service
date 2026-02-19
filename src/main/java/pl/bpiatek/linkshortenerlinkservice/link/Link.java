@@ -29,4 +29,20 @@ record Link(
     static Link empty() {
         return new Link(null, null, null, null, null, null, false, false, null, null, null);
     }
+
+    Link withUpdatedAt(Instant updatedAt) {
+        return new Link(
+                this.id,
+                this.userId,
+                this.shortUrl,
+                this.longUrl,
+                this.title,
+                this.notes,
+                this.isActive,
+                this.isCustom,
+                this.createdAt,
+                updatedAt,
+                this.expiresAt
+        );
+    }
 }

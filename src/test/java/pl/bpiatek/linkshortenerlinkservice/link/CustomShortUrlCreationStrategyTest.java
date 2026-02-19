@@ -9,6 +9,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import pl.bpiatek.linkshortenerlinkservice.exception.ReservedShortUrlException;
 import pl.bpiatek.linkshortenerlinkservice.exception.ShortCodeAlreadyExistsException;
 
@@ -21,6 +24,8 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static pl.bpiatek.linkshortenerlinkservice.link.LinkStubs.aCreateLinkResponseWithShortUrl;
 import static pl.bpiatek.linkshortenerlinkservice.link.LinkStubs.aLinkWithShortUrl;
@@ -42,12 +47,21 @@ class CustomShortUrlCreationStrategyTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     private CustomShortUrlCreationStrategy strategy;
 
     @BeforeEach
     void setUp() {
         var reservedWordsValidator = new ReservedWordsValidator(Set.of("dashboard", "login"));
-        strategy = new CustomShortUrlCreationStrategy(linkRepository, linkMapper, reservedWordsValidator);
+        strategy = new CustomShortUrlCreationStrategy(linkRepository, linkMapper, reservedWordsValidator, transactionTemplate);
+
+        var status = mock(TransactionStatus.class);
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(status);
+        });
     }
 
     @Test

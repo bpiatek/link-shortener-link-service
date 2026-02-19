@@ -1,11 +1,15 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto;
 
 import java.time.Clock;
@@ -16,8 +20,32 @@ import java.util.Set;
 class LinkConfig {
 
     @Bean
-    LinkRepository linkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock) {
-        return new JdbcLinkRepository(namedJdbcTemplate, clock);
+    LinkRepository linkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock, OutboxRepository outboxRepository) {
+        return new JdbcLinkRepository(namedJdbcTemplate, clock, outboxRepository);
+    }
+
+    @Bean
+    OutboxRepository outboxRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock) {
+        return new OutboxRepository(jdbcTemplate, objectMapper, clock);
+    }
+
+    @Bean
+    @ConditionalOnProperty(value = "app.scheduling.enable-sweeper", havingValue = "true", matchIfMissing = true)
+    SweeperOutboxRelay outboxRelay(OutboxRepository outboxRepository,
+                                   ObjectMapper objectMapper,
+                                   LinkLifecycleKafkaProducer linkLifecycleKafkaProducer) {
+        return new SweeperOutboxRelay(
+                outboxRepository,
+                objectMapper,
+                linkLifecycleKafkaProducer);
+    }
+
+    @Bean
+    LinkLifecycleKafkaProducer linkLifecycleKafkaProducer(
+            @Value("${topic.link.lifecycle}") String topicName,
+            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate,
+            Clock clock) {
+        return new LinkLifecycleKafkaProducer(topicName, kafkaTemplate, clock);
     }
 
     @Bean
@@ -36,8 +64,15 @@ class LinkConfig {
     }
 
     @Bean
-    CustomShortUrlCreationStrategy customCodeCreationStrategy(LinkRepository linkRepository, LinkMapper linkMapper, ReservedWordsValidator reservedWordsValidator) {
-        return new CustomShortUrlCreationStrategy(linkRepository, linkMapper, reservedWordsValidator);
+    CustomShortUrlCreationStrategy customCodeCreationStrategy(LinkRepository linkRepository,
+                                                              LinkMapper linkMapper,
+                                                              ReservedWordsValidator reservedWordsValidator,
+                                                              TransactionTemplate transactionTemplate) {
+        return new CustomShortUrlCreationStrategy(
+                linkRepository,
+                linkMapper,
+                reservedWordsValidator,
+                transactionTemplate);
     }
 
     @Bean
@@ -63,17 +98,19 @@ class LinkConfig {
     }
 
     @Bean
-    LinkEventsPublisher linkCreatedPublisher(LinkCreatedKafkaProducer linkCreatedKafkaProducer,
-                                             LinkUpdatedKafkaProducer linkUpdatedKafkaProducer,
-                                             LinkDeletedKafkaProducer linkDeletedKafkaProducer) {
-        return new LinkEventsPublisher(linkCreatedKafkaProducer, linkUpdatedKafkaProducer, linkDeletedKafkaProducer);
+    FastTrackOutboxListener linkCreatedPublisher(LinkLifecycleKafkaProducer kafkaProducer,
+                                                 OutboxRepository outboxRepository) {
+        return new FastTrackOutboxListener(
+                kafkaProducer,
+                outboxRepository);
     }
 
     @Bean
     RandomShortUrlCreationStrategy randomCodeCreationStrategy(LinkRepository linkRepository,
                                                               LinkMapper linkMapper,
-                                                              ShortUrlGenerator shortUrlGenerator) {
-        return new RandomShortUrlCreationStrategy(linkRepository, linkMapper, shortUrlGenerator);
+                                                              ShortUrlGenerator shortUrlGenerator,
+                                                              TransactionTemplate transactionTemplate) {
+        return new RandomShortUrlCreationStrategy(linkRepository, linkMapper, shortUrlGenerator, transactionTemplate);
     }
 
     @Bean

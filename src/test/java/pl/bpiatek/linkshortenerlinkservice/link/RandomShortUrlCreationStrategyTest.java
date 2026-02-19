@@ -9,6 +9,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import pl.bpiatek.linkshortenerlinkservice.exception.UnableToGenerateUniqueShortUrlException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +21,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static pl.bpiatek.linkshortenerlinkservice.link.LinkStubs.aCreateLinkResponseWithShortUrl;
@@ -43,11 +47,20 @@ class RandomShortUrlCreationStrategyTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private TransactionTemplate transactionTemplate;
+
     private RandomShortUrlCreationStrategy strategy;
 
     @BeforeEach
     void setUp() {
-        strategy = new RandomShortUrlCreationStrategy(linkRepository, linkMapper, shortUrlGenerator);
+        strategy = new RandomShortUrlCreationStrategy(linkRepository, linkMapper, shortUrlGenerator, transactionTemplate);
+
+        var status = mock(TransactionStatus.class);
+        given(transactionTemplate.execute(any())).willAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(status);
+        });
     }
 
     @Test
