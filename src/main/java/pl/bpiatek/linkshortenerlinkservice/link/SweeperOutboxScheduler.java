@@ -7,25 +7,46 @@ import org.springframework.scheduling.annotation.Scheduled;
 import pl.bpiatek.linkshortenerlinkservice.link.OutboxRepository.OutboxRecord;
 
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 
-class SweeperOutboxRelay {
+class SweeperOutboxScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(SweeperOutboxRelay.class);
+    private static final Logger log = LoggerFactory.getLogger(SweeperOutboxScheduler.class);
 
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
     private final LinkLifecycleKafkaProducer kafkaProducer;
 
-    SweeperOutboxRelay(OutboxRepository outboxRepository, ObjectMapper objectMapper, LinkLifecycleKafkaProducer kafkaProducer) {
+    private final ReentrantLock lock = new ReentrantLock();
+
+    SweeperOutboxScheduler(OutboxRepository outboxRepository, ObjectMapper objectMapper, LinkLifecycleKafkaProducer kafkaProducer) {
         this.outboxRepository = outboxRepository;
         this.objectMapper = objectMapper;
         this.kafkaProducer = kafkaProducer;
     }
 
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelayString = "${app.scheduling.sweeper-delay:5000}")
     public void recoverStalledEvents() {
+        try {
+            if (lock.tryLock(1, TimeUnit.SECONDS)) {
+                try {
+                    executeRecovery();
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                log.warn("Sweeper skip: recovery already in progress or database is slow.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Sweeper thread interrupted during lock acquisition");
+        }
+    }
+
+    private void executeRecovery() {
         var events = outboxRepository.fetchStalledEvents(50);
         if (events.isEmpty()) {
             return;
@@ -37,6 +58,8 @@ class SweeperOutboxRelay {
             for (var event : events) {
                 executor.submit(() -> processSingleEvent(event));
             }
+        } catch (Exception e) {
+            log.error("Critical failure in Sweeper executor", e);
         }
     }
 

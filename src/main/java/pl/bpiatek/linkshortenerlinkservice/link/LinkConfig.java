@@ -31,10 +31,10 @@ class LinkConfig {
 
     @Bean
     @ConditionalOnProperty(value = "app.scheduling.enable-sweeper", havingValue = "true", matchIfMissing = true)
-    SweeperOutboxRelay outboxRelay(OutboxRepository outboxRepository,
-                                   ObjectMapper objectMapper,
-                                   LinkLifecycleKafkaProducer linkLifecycleKafkaProducer) {
-        return new SweeperOutboxRelay(
+    SweeperOutboxScheduler outboxRelay(OutboxRepository outboxRepository,
+                                       ObjectMapper objectMapper,
+                                       LinkLifecycleKafkaProducer linkLifecycleKafkaProducer) {
+        return new SweeperOutboxScheduler(
                 outboxRepository,
                 objectMapper,
                 linkLifecycleKafkaProducer);
@@ -76,33 +76,13 @@ class LinkConfig {
     }
 
     @Bean
-    LinkCreatedKafkaProducer linkCreatedKafkaProducer(
-            @Value("${topic.link.lifecycle}") String topicName,
-            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate) {
-        return new LinkCreatedKafkaProducer(topicName, kafkaTemplate);
-    }
-
-    @Bean
-    LinkUpdatedKafkaProducer linkUpdatedKafkaProducer(
-            @Value("${topic.link.lifecycle}") String topicName,
-            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate) {
-        return  new LinkUpdatedKafkaProducer(topicName, kafkaTemplate);
-    }
-
-    @Bean
-    LinkDeletedKafkaProducer linkDeletedKafkaProducer(
-            @Value("${topic.link.lifecycle}") String topicName,
-            KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate,
-            Clock clock) {
-        return new LinkDeletedKafkaProducer(topicName, kafkaTemplate, clock);
-    }
-
-    @Bean
     FastTrackOutboxListener linkCreatedPublisher(LinkLifecycleKafkaProducer kafkaProducer,
-                                                 OutboxRepository outboxRepository) {
+                                                 OutboxRepository outboxRepository,
+                                                 @Value("${app.outbox.fast-track-concurrency}") int maxConcurrency) {
         return new FastTrackOutboxListener(
                 kafkaProducer,
-                outboxRepository);
+                outboxRepository,
+                maxConcurrency);
     }
 
     @Bean

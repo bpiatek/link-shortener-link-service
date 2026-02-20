@@ -14,6 +14,9 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.concurrent.CompletableFuture;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -23,7 +26,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class LinkCreatedKafkaProducerTest {
+class LinkLifecycleKafkaProducerCreateEventTest {
 
     private static final String TEST_TOPIC = "test-topic";
 
@@ -33,13 +36,16 @@ class LinkCreatedKafkaProducerTest {
     @Captor
     private ArgumentCaptor<ProducerRecord<String, LinkLifecycleEvent>> producerRecordCaptor;
 
-    private LinkCreatedKafkaProducer linkCreatedKafkaProducer;
+    private LinkLifecycleKafkaProducer linkLifecycleKafkaProducer;
     private CompletableFuture<SendResult<String, LinkLifecycleEvent>> future;
     private Link link;
 
     @BeforeEach
     void setUp() {
-        linkCreatedKafkaProducer = new LinkCreatedKafkaProducer(TEST_TOPIC, kafkaTemplate);
+        var clock = Clock.fixed(
+                Instant.parse("2025-08-22T10:00:00Z"),
+                ZoneOffset.UTC);
+        linkLifecycleKafkaProducer = new LinkLifecycleKafkaProducer(TEST_TOPIC, kafkaTemplate, clock);
         link = LinkStubs.aLink();
     }
 
@@ -57,7 +63,7 @@ class LinkCreatedKafkaProducerTest {
         mockSuccessfulSend();
 
         // when
-        linkCreatedKafkaProducer.sendLinkCreatedEvent(link);
+        linkLifecycleKafkaProducer.sendLifecycleEvent(link, LinkEventType.LINK_CREATED);
 
         // then
         verify(kafkaTemplate).send(producerRecordCaptor.capture());
