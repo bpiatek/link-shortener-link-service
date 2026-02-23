@@ -22,34 +22,25 @@ class JdbcLinkRepository implements LinkRepository {
     private final NamedParameterJdbcTemplate namedJdbcTemplate;
     private final SimpleJdbcInsert linkInsert;
     private final Clock clock;
-    private final OutboxRepository outboxRepository;
 
-    JdbcLinkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock, OutboxRepository outboxRepository) {
+    JdbcLinkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock) {
         this.namedJdbcTemplate = namedJdbcTemplate;
         this.linkInsert = new SimpleJdbcInsert(namedJdbcTemplate.getJdbcTemplate())
                 .withTableName("links")
                 .usingGeneratedKeyColumns("id");
         this.clock = clock;
-        this.outboxRepository = outboxRepository;
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.MANDATORY)
     public Link save(Link link) {
         var now = clock.instant();
         var createdAt = providedDateOr(link.createdAt(), now);
         var params = buildInsertParams(link, createdAt, now);
 
         var key = linkInsert.executeAndReturnKey(params);
-        var savedLink = link.withIdAndCreatedAt(key.longValue(), createdAt.toInstant());
 
-        outboxRepository.saveEvent(
-                String.valueOf(savedLink.id()),
-                LinkEventType.LINK_CREATED,
-                savedLink
-        );
-
-        return savedLink;
+        return link.withIdAndCreatedAt(key.longValue(), createdAt.toInstant());
     }
 
     private Map<String, Object> buildInsertParams(Link link, Timestamp createdAt, Instant now) {
@@ -91,7 +82,6 @@ class JdbcLinkRepository implements LinkRepository {
     @Override
     public void update(Link link) {
         var now = clock.instant();
-        var updatedLink = link.withUpdatedAt(now);
 
         var sql = """
             UPDATE links
@@ -110,12 +100,6 @@ class JdbcLinkRepository implements LinkRepository {
                 .addValue("updatedAt", Timestamp.from(now));
 
         namedJdbcTemplate.update(sql, params);
-
-        outboxRepository.saveEvent(
-                String.valueOf(link.id()),
-                LinkEventType.LINK_UPDATED,
-                updatedLink
-        );
     }
 
     @Override
@@ -131,36 +115,31 @@ class JdbcLinkRepository implements LinkRepository {
     }
 
     @Override
-    public void deleteByIdAndUserId(Link link) {
+    public void deleteByIdAndUserId(Long id, String userId) {
         var sql = "DELETE FROM links WHERE id = :id AND user_id = :userId";
 
         var params = new MapSqlParameterSource()
-                .addValue("id", link.id())
-                .addValue("userId", link.userId());
+                .addValue("id", id)
+                .addValue("userId", userId);
 
-        int deletedRows = namedJdbcTemplate.update(sql, params);
-
-        if (deletedRows > 0) {
-            outboxRepository.saveEvent(
-                    String.valueOf(link.id()),
-                    LinkEventType.LINK_DELETED,
-                    link);
-        }
+        namedJdbcTemplate.update(sql, params);
     }
 
     @Override
-    public int deleteDeactivatedCustomLinksOlderThan(Instant cutoffDate) {
+    public List<Link> deleteAndReturnDeactivatedCustomLinksOlderThan(Instant cutoffDate) {
         var sql = """
             DELETE FROM links
             WHERE is_custom = true
               AND is_active = false
               AND updated_at < :cutoffDate
+            RETURNING id, user_id, short_url, long_url, title, notes, is_active, is_custom, created_at, updated_at, expires_at
             """;
-        
-        var params = new MapSqlParameterSource()
-                .addValue("cutoffDate", Timestamp.from(cutoffDate));
-        
-        return namedJdbcTemplate.update(sql, params);
+
+        return namedJdbcTemplate.query(
+                sql,
+                Map.of("cutoffDate", Timestamp.from(cutoffDate)),
+                LINK_ROW_MAPPER
+        );
     }
 
     private Timestamp providedDateOr(Instant provided, Instant fallback) {

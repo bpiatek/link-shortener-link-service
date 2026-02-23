@@ -1,4 +1,6 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
-record LinkCreatedApplicationEvent(Link link) {
+import java.util.UUID;
+
+record LinkCreatedApplicationEvent(UUID outboxEventId, Link link) {
 }

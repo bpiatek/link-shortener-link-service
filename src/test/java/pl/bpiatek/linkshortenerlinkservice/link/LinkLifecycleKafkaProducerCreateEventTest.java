@@ -14,9 +14,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto.LinkLifecycleEvent;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -33,6 +31,9 @@ class LinkLifecycleKafkaProducerCreateEventTest {
     @Mock
     private KafkaTemplate<String, LinkLifecycleEvent> kafkaTemplate;
 
+    @Mock
+    private LinkLifecycleEventFactory eventFactory;
+
     @Captor
     private ArgumentCaptor<ProducerRecord<String, LinkLifecycleEvent>> producerRecordCaptor;
 
@@ -42,43 +43,51 @@ class LinkLifecycleKafkaProducerCreateEventTest {
 
     @BeforeEach
     void setUp() {
-        var clock = Clock.fixed(
-                Instant.parse("2025-08-22T10:00:00Z"),
-                ZoneOffset.UTC);
-        linkLifecycleKafkaProducer = new LinkLifecycleKafkaProducer(TEST_TOPIC, kafkaTemplate, clock);
+        linkLifecycleKafkaProducer = new LinkLifecycleKafkaProducer(TEST_TOPIC, kafkaTemplate, eventFactory);
         link = LinkStubs.aLink();
-    }
-
-    private void mockSuccessfulSend() {
-        SendResult<String, LinkLifecycleEvent> sendResult = mock(SendResult.class);
-        RecordMetadata metadata = mock(RecordMetadata.class);
-        given(sendResult.getRecordMetadata()).willReturn(metadata);
-
-        given(kafkaTemplate.send((ProducerRecord<String, LinkLifecycleEvent>) any())).willReturn(CompletableFuture.completedFuture(sendResult));
     }
 
     @Test
     void shouldSendMessageAndIncrementSuccessMetric() {
-        //given
+        // given
+        var eventId = UUID.randomUUID();
+
+        var expectedProtobufEvent = LinkLifecycleEvent.newBuilder().build();
+
+        given(eventFactory.createEvent(eventId, link, LinkEventType.LINK_CREATED))
+                .willReturn(expectedProtobufEvent);
+
         mockSuccessfulSend();
 
         // when
-        linkLifecycleKafkaProducer.sendLifecycleEvent(link, LinkEventType.LINK_CREATED);
+        linkLifecycleKafkaProducer.sendLifecycleEvent(eventId, link, LinkEventType.LINK_CREATED);
 
         // then
         verify(kafkaTemplate).send(producerRecordCaptor.capture());
         var sentRecord = producerRecordCaptor.getValue();
 
         var softly = new SoftAssertions();
-        assertRecordBasics(sentRecord, softly);
+        assertRecordBasics(sentRecord, expectedProtobufEvent, softly);
         assertHeaders(sentRecord, softly);
         softly.assertAll();
     }
 
-    private void assertRecordBasics(ProducerRecord<String, LinkLifecycleEvent> record, SoftAssertions softly) {
+    private void mockSuccessfulSend() {
+        SendResult<String, LinkLifecycleEvent> sendResult = mock(SendResult.class);
+        var metadata = mock(RecordMetadata.class);
+        given(sendResult.getRecordMetadata()).willReturn(metadata);
+
+        given(kafkaTemplate.send(any(ProducerRecord.class)))
+                .willReturn(CompletableFuture.completedFuture(sendResult));
+    }
+
+    private void assertRecordBasics(ProducerRecord<String, LinkLifecycleEvent> record,
+                                    LinkLifecycleEvent expectedEvent,
+                                    SoftAssertions softly) {
         softly.assertThat(record.topic()).isEqualTo(TEST_TOPIC);
-        softly.assertThat(record.key()).isEqualTo("1");
-        softly.assertThat(record.value().getLinkCreated().getLinkId()).isEqualTo("1");
+        softly.assertThat(record.key()).isEqualTo(String.valueOf(link.id()));
+
+        softly.assertThat(record.value()).isEqualTo(expectedEvent);
     }
 
     private void assertHeaders(ProducerRecord<String, LinkLifecycleEvent> record, SoftAssertions softly) {

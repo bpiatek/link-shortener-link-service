@@ -2,19 +2,23 @@ package pl.bpiatek.linkshortenerlinkservice.link;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import pl.bpiatek.linkshortenerlinkservice.IntegrationTest;
 
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.ZoneOffset;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
+import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.ChronoUnit.DAYS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 
+@Transactional
 class JdbcLinkRepositoryTest extends IntegrationTest {
 
     @Autowired
@@ -28,20 +32,12 @@ class JdbcLinkRepositoryTest extends IntegrationTest {
         // given
         var now = Instant.now(Clock.fixed(
                 Instant.parse("2025-08-22T10:00:00Z"),
-                ZoneOffset.UTC));
+                UTC));
 
         var linkToSave = new Link(
-                null,
-                "123",
-                "aB5xZ1",
-                "https://example.com/a-very-long-url",
-                "Example Title",
-                "Some notes",
-                true,
-                false,
-                now,
-                now,
-                now.plus(7, DAYS)
+                null, "123", "aB5xZ1", "https://example.com/a-very-long-url",
+                "Example Title", "Some notes", true, false,
+                now, now, now.plus(7, DAYS)
         );
 
         // when
@@ -149,6 +145,108 @@ class JdbcLinkRepositoryTest extends IntegrationTest {
 
         // then
         assertThat(foundLinks).isEmpty();
+    }
+
+    @Test
+    void shouldFindByIdAndUserId() {
+        // given
+        var link = linkFixtures.aLink(TestLink.builder().userId("user-1").build());
+
+        // when
+        var foundLink = linkRepository.findByIdAndUserId(link.id(), "user-1");
+
+        // then
+        assertThat(foundLink).isPresent();
+        assertThat(foundLink.get().id()).isEqualTo(link.id());
+    }
+
+    @Test
+    void shouldNotFindByIdAndWrongUserId() {
+        // given
+        var link = linkFixtures.aLink(TestLink.builder().userId("user-1").build());
+
+        // when
+        var foundLink = linkRepository.findByIdAndUserId(link.id(), "wrong-user");
+
+        // then
+        assertThat(foundLink).isNotPresent();
+    }
+
+    @Test
+    void shouldUpdateLink() {
+        // given
+        var originalLink = linkFixtures.aLink(TestLink.builder()
+                .title("Old Title")
+                .longUrl("https://old.com")
+                .isActive(true)
+                .build());
+
+        var expectedUpdateTime = DEFAULT_NOW.plus(5, ChronoUnit.DAYS);
+        setCurrentTime(expectedUpdateTime);
+
+        var linkToUpdate = new Link(
+                originalLink.id(), originalLink.userId(), originalLink.shortUrl(),
+                "https://new.com", "New Title", originalLink.notes(), false,
+                originalLink.isCustom(), originalLink.createdAt(), expectedUpdateTime, originalLink.expiresAt()
+        );
+
+        // when
+        linkRepository.update(linkToUpdate);
+
+        // then
+        var fetchedLink = getLinkWithId(originalLink.id());
+        assertSoftly(s -> {
+            s.assertThat(fetchedLink.title()).isEqualTo("New Title");
+            s.assertThat(fetchedLink.longUrl()).isEqualTo("https://new.com");
+            s.assertThat(fetchedLink.isActive()).isFalse();
+            s.assertThat(fetchedLink.updatedAt()).isEqualTo(expectedUpdateTime);
+        });
+    }
+
+    @Test
+    void shouldDeleteByIdAndUserId() {
+        // given
+        var link = linkFixtures.aLink(TestLink.builder().userId("user-1").build());
+
+        // when
+        linkRepository.deleteByIdAndUserId(link.id(), link.userId());
+
+        // then
+        var foundLink = linkRepository.findByIdAndUserId(link.id(), link.userId());
+        assertThat(foundLink).isNotPresent();
+    }
+
+    @Test
+    void shouldDeleteAndReturnDeactivatedCustomLinksOlderThanCutoff() {
+        // given
+        var cutoffDate = LocalDateTime.now().minusDays(30);
+        var veryOldDate = LocalDateTime.now().minusDays(60);
+        var recentDate = LocalDateTime.now().minusDays(10);
+
+        // SHOULD BE DELETED
+        var targetLink = linkFixtures.aLink(TestLink.builder()
+                .shortUrl("abc").isCustom(true).isActive(false).updatedAt(veryOldDate).build());
+
+        // SHOULD STAY
+        var recentInactiveLink = linkFixtures.aLink(TestLink.builder()
+                .shortUrl("cab").isCustom(true).isActive(false).updatedAt(recentDate).build());
+        var activeOldLink = linkFixtures.aLink(TestLink.builder()
+                .shortUrl("bac").isCustom(true).isActive(true).updatedAt(veryOldDate).build());
+        var randomOldLink = linkFixtures.aLink(TestLink.builder()
+                .shortUrl("e38").isCustom(false).isActive(false).updatedAt(veryOldDate).build());
+
+        // when
+        var deletedLinks = linkRepository.deleteAndReturnDeactivatedCustomLinksOlderThan(cutoffDate.toInstant(UTC));
+
+        // then
+        assertThat(deletedLinks).hasSize(1);
+        assertThat(deletedLinks.getFirst().id()).isEqualTo(targetLink.id());
+
+        assertThat(linkRepository.findByIdAndUserId(targetLink.id(), targetLink.userId())).isNotPresent();
+
+        assertThat(linkRepository.findByIdAndUserId(recentInactiveLink.id(), recentInactiveLink.userId())).isPresent();
+        assertThat(linkRepository.findByIdAndUserId(activeOldLink.id(), activeOldLink.userId())).isPresent();
+        assertThat(linkRepository.findByIdAndUserId(randomOldLink.id(), randomOldLink.userId())).isPresent();
     }
 
     private Link getLinkWithId(Long id) {

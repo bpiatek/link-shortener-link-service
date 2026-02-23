@@ -1,12 +1,10 @@
 package pl.bpiatek.linkshortenerlinkservice.link;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -20,32 +18,37 @@ import java.util.Set;
 class LinkConfig {
 
     @Bean
-    LinkRepository linkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock, OutboxRepository outboxRepository) {
-        return new JdbcLinkRepository(namedJdbcTemplate, clock, outboxRepository);
+    LinkRepository linkRepository(NamedParameterJdbcTemplate namedJdbcTemplate, Clock clock) {
+        return new JdbcLinkRepository(namedJdbcTemplate, clock);
     }
 
     @Bean
-    OutboxRepository outboxRepository(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, Clock clock) {
-        return new OutboxRepository(jdbcTemplate, objectMapper, clock);
+    OutboxRepository outboxRepository(NamedParameterJdbcTemplate namedJdbcTemplate) {
+        return new OutboxRepository(namedJdbcTemplate);
+    }
+
+    @Bean
+    LinkLifecycleEventFactory linkLifecycleEventFactory(Clock clock) {
+        return new LinkLifecycleEventFactory(clock);
     }
 
     @Bean
     @ConditionalOnProperty(value = "app.scheduling.enable-sweeper", havingValue = "true", matchIfMissing = true)
     SweeperOutboxScheduler outboxRelay(OutboxRepository outboxRepository,
-                                       ObjectMapper objectMapper,
-                                       LinkLifecycleKafkaProducer linkLifecycleKafkaProducer) {
+                                       LinkLifecycleKafkaProducer linkLifecycleKafkaProducer,
+                                       TransactionTemplate transactionTemplate) {
         return new SweeperOutboxScheduler(
                 outboxRepository,
-                objectMapper,
-                linkLifecycleKafkaProducer);
+                linkLifecycleKafkaProducer,
+                transactionTemplate);
     }
 
     @Bean
     LinkLifecycleKafkaProducer linkLifecycleKafkaProducer(
             @Value("${topic.link.lifecycle}") String topicName,
             KafkaTemplate<String, LinkLifecycleEventProto.LinkLifecycleEvent> kafkaTemplate,
-            Clock clock) {
-        return new LinkLifecycleKafkaProducer(topicName, kafkaTemplate, clock);
+            LinkLifecycleEventFactory linkLifecycleEventFactory) {
+        return new LinkLifecycleKafkaProducer(topicName, kafkaTemplate, linkLifecycleEventFactory);
     }
 
     @Bean
@@ -64,15 +67,13 @@ class LinkConfig {
     }
 
     @Bean
-    CustomShortUrlCreationStrategy customCodeCreationStrategy(LinkRepository linkRepository,
-                                                              LinkMapper linkMapper,
+    CustomShortUrlCreationStrategy customCodeCreationStrategy(LinkMapper linkMapper,
                                                               ReservedWordsValidator reservedWordsValidator,
-                                                              TransactionTemplate transactionTemplate) {
+                                                              LinkTransactionalPersister linkTransactionalPersister) {
         return new CustomShortUrlCreationStrategy(
-                linkRepository,
                 linkMapper,
                 reservedWordsValidator,
-                transactionTemplate);
+                linkTransactionalPersister);
     }
 
     @Bean
@@ -86,11 +87,25 @@ class LinkConfig {
     }
 
     @Bean
-    RandomShortUrlCreationStrategy randomCodeCreationStrategy(LinkRepository linkRepository,
-                                                              LinkMapper linkMapper,
+    RandomShortUrlCreationStrategy randomCodeCreationStrategy(LinkMapper linkMapper,
                                                               ShortUrlGenerator shortUrlGenerator,
-                                                              TransactionTemplate transactionTemplate) {
-        return new RandomShortUrlCreationStrategy(linkRepository, linkMapper, shortUrlGenerator, transactionTemplate);
+                                                              LinkTransactionalPersister linkTransactionalPersister) {
+        return new RandomShortUrlCreationStrategy(linkMapper, shortUrlGenerator, linkTransactionalPersister);
+    }
+
+    @Bean
+    LinkTransactionalPersister linkTransactionalPersister(LinkRepository linkRepository,
+                                                          OutboxRepository outboxRepository,
+                                                          LinkLifecycleEventFactory eventFactory,
+                                                          TransactionTemplate transactionTemplate,
+                                                          LinkMapper linkMapper) {
+        return new LinkTransactionalPersister(
+                linkRepository,
+                outboxRepository,
+                eventFactory,
+                transactionTemplate,
+                linkMapper
+        );
     }
 
     @Bean
@@ -98,8 +113,17 @@ class LinkConfig {
                                                     ApplicationEventPublisher eventPublisher,
                                                     Clock clock,
                                                     LinkMapper linkMapper,
-                                                    @Value("${link.delete.deactivated.custom.older.than.days}") Integer days) {
-        return new LinkManipulationService(linkRepository, eventPublisher, clock, linkMapper, days);
+                                                    @Value("${link.delete.deactivated.custom.older.than.days}") Integer days,
+                                                    OutboxRepository outboxRepository,
+                                                    LinkLifecycleEventFactory lifecycleEventFactory) {
+        return new LinkManipulationService(
+                linkRepository,
+                eventPublisher,
+                clock,
+                linkMapper,
+                days,
+                outboxRepository,
+                lifecycleEventFactory);
     }
 
     @Bean

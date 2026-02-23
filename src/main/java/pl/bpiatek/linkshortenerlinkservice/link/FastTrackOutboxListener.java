@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.util.UUID;
 import java.util.concurrent.Semaphore;
 
 class FastTrackOutboxListener {
@@ -27,22 +28,22 @@ class FastTrackOutboxListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLinkCreatedEvent(LinkCreatedApplicationEvent event) {
-        processFastTrack(event.link(), LinkEventType.LINK_CREATED);
+        processFastTrack(event.outboxEventId(), event.link(), LinkEventType.LINK_CREATED);
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLinkUpdatedEvent(LinkUpdatedApplicationEvent event) {
-        processFastTrack(event.link(), LinkEventType.LINK_UPDATED);
+        processFastTrack(event.outboxEventId(), event.link(), LinkEventType.LINK_UPDATED);
     }
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleLinkDeletedEvent(LinkDeletedApplicationEvent event) {
-        processFastTrack(event.link(), LinkEventType.LINK_DELETED);
+        processFastTrack(event.outboxEventId(), event.link(), LinkEventType.LINK_DELETED);
     }
 
-    private void processFastTrack(Link link, LinkEventType eventType) {
+    private void processFastTrack(UUID outboxEventId, Link link, LinkEventType eventType) {
         if (!semaphore.tryAcquire()) {
             log.warn("Fast-Track throttled for ID: {}. Sweeper will handle it.", link.id());
             return;
@@ -53,15 +54,17 @@ class FastTrackOutboxListener {
         try {
             // Send to the consolidated producer (blocks Virtual Thread until ACK)
             log.info("Attempting to publish {} to Kafka for ID: {}", eventType, id);
-            kafkaProducer.sendLifecycleEvent(link, eventType);
+            kafkaProducer.sendLifecycleEvent(outboxEventId, link, eventType);
 
             log.info("Kafka ACK received. Marking Outbox as processed for ID: {}", id);
-            outboxRepository.markAsProcessed(id, eventType);
+            outboxRepository.markAsProcessedById(outboxEventId);
 
             log.info("Fast-Track successful for Link ID: {} with event: {}", id, eventType);
         } catch (Exception e) {
             log.warn("Fast-Track failed for Link ID: {} with event: {}. Sweeper will recover this. Reason: {}",
                     id, eventType, e.getMessage());
+        } finally {
+            semaphore.release();
         }
     }
 }

@@ -4,7 +4,6 @@ package pl.bpiatek.linkshortenerlinkservice.link;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.annotation.Transactional;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.LinkDto;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.UpdateLinkRequest;

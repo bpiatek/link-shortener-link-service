@@ -4,14 +4,11 @@ package pl.bpiatek.linkshortenerlinkservice.link;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
+import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 import pl.bpiatek.linkshortenerlinkservice.exception.UnableToGenerateUniqueShortUrlException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,12 +18,10 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static pl.bpiatek.linkshortenerlinkservice.link.LinkStubs.aCreateLinkResponseWithShortUrl;
 import static pl.bpiatek.linkshortenerlinkservice.link.LinkStubs.aLinkWithShortUrl;
-import static pl.bpiatek.linkshortenerlinkservice.link.LinkStubs.aSavedLinkWithShortUrl;
 
 @ExtendWith(MockitoExtension.class)
 class RandomShortUrlCreationStrategyTest {
@@ -34,9 +29,6 @@ class RandomShortUrlCreationStrategyTest {
     private static final String LONG_URL = "https://example.com/long";
     private static final String USER_ID = "123";
     private static final String TITLE = "Test title";
-
-    @Mock
-    private LinkRepository linkRepository;
 
     @Mock
     private LinkMapper linkMapper;
@@ -48,19 +40,13 @@ class RandomShortUrlCreationStrategyTest {
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
-    private TransactionTemplate transactionTemplate;
+    private LinkTransactionalPersister linkTransactionalPersister;
 
     private RandomShortUrlCreationStrategy strategy;
 
     @BeforeEach
     void setUp() {
-        strategy = new RandomShortUrlCreationStrategy(linkRepository, linkMapper, shortUrlGenerator, transactionTemplate);
-
-        var status = mock(TransactionStatus.class);
-        given(transactionTemplate.execute(any())).willAnswer(invocation -> {
-            TransactionCallback<?> callback = invocation.getArgument(0);
-            return callback.doInTransaction(status);
-        });
+        strategy = new RandomShortUrlCreationStrategy(linkMapper, shortUrlGenerator, linkTransactionalPersister);
     }
 
     @Test
@@ -68,18 +54,16 @@ class RandomShortUrlCreationStrategyTest {
         // given
         var uniqueShortUrl = "abc1234";
         givenGeneratorReturns(uniqueShortUrl);
-        var savedLink = givenSuccessfulSave(uniqueShortUrl);
+        var expectedResponse = givenSuccessfulPersist(uniqueShortUrl);
 
         // when
         var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, true, TITLE, eventPublisher);
 
         // then
-        assertThat(actualResponse.shortUrl()).contains(uniqueShortUrl);
+        assertThat(actualResponse).isEqualTo(expectedResponse);
         verify(shortUrlGenerator).generate();
-        verify(linkRepository).save(any(Link.class));
-        var eventCaptor = ArgumentCaptor.forClass(LinkCreatedApplicationEvent.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
-        assertThat(eventCaptor.getValue().link()).isEqualTo(savedLink);
+
+        verify(linkTransactionalPersister).persistAndPublish(any(Link.class), eq(eventPublisher));
     }
 
     @Test
@@ -88,16 +72,16 @@ class RandomShortUrlCreationStrategyTest {
         var uniqueShortUrl = "unique123";
 
         givenGeneratorReturns(collidingShortUrl, uniqueShortUrl);
-        givenCollisionOnSave(collidingShortUrl);
-        givenSuccessfulSave(uniqueShortUrl);
+        givenCollisionOnPersist(collidingShortUrl);
+        var expectedResponse = givenSuccessfulPersist(uniqueShortUrl);
 
         // when
         var actualResponse = strategy.createLink(USER_ID, LONG_URL, null, true, TITLE, eventPublisher);
 
         // then:
-        assertThat(actualResponse.shortUrl()).contains(uniqueShortUrl);
+        assertThat(actualResponse).isEqualTo(expectedResponse);
         verify(shortUrlGenerator, times(2)).generate();
-        verify(linkRepository, times(2)).save(any(Link.class));
+        verify(linkTransactionalPersister, times(2)).persistAndPublish(any(Link.class), eq(eventPublisher));
     }
 
     @Test
@@ -105,34 +89,40 @@ class RandomShortUrlCreationStrategyTest {
         // given
         var collidingShortUrl = "always-colliding";
         givenGeneratorReturns(collidingShortUrl, collidingShortUrl, collidingShortUrl, collidingShortUrl, collidingShortUrl);
-        givenCollisionOnSave(collidingShortUrl);
+        givenCollisionOnPersist(collidingShortUrl);
 
         // then
-        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, null,false, "title", eventPublisher))
+        assertThatThrownBy(() -> strategy.createLink(USER_ID, LONG_URL, null, false, "title", eventPublisher))
                 .isInstanceOf(UnableToGenerateUniqueShortUrlException.class);
+
         verify(shortUrlGenerator, times(5)).generate();
-        verify(linkRepository, times(5)).save(any(Link.class));
+        verify(linkTransactionalPersister, times(5)).persistAndPublish(any(Link.class), eq(eventPublisher));
     }
 
     private void givenGeneratorReturns(String firstShortUrl, String... subsequentShortUrls) {
         given(shortUrlGenerator.generate()).willReturn(firstShortUrl, subsequentShortUrls);
     }
 
-    private void givenCollisionOnSave(String collidingShortUrl) {
+    private void givenCollisionOnPersist(String collidingShortUrl) {
         var link = aLinkWithShortUrl(collidingShortUrl);
-        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl), anyBoolean(), anyBoolean(), anyString())).willReturn(link);
-        given(linkRepository.save(link)).willThrow(new DataIntegrityViolationException("Collision!"));
+
+        given(linkMapper.toLink(anyString(), anyString(), eq(collidingShortUrl), anyBoolean(), anyBoolean(), anyString()))
+                .willReturn(link);
+
+        given(linkTransactionalPersister.persistAndPublish(eq(link), eq(eventPublisher)))
+                .willThrow(new DataIntegrityViolationException("Collision!"));
     }
 
-    private Link givenSuccessfulSave(String uniqueShortUrl) {
+    private CreateLinkResponse givenSuccessfulPersist(String uniqueShortUrl) {
         var linkToSave = aLinkWithShortUrl(uniqueShortUrl);
-        var savedLink = aSavedLinkWithShortUrl(1L, uniqueShortUrl);
-        var response = aCreateLinkResponseWithShortUrl(uniqueShortUrl);
+        var expectedResponse = aCreateLinkResponseWithShortUrl(uniqueShortUrl);
 
-        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl), anyBoolean(), anyBoolean(), anyString())).willReturn(linkToSave);
-        given(linkRepository.save(linkToSave)).willReturn(savedLink);
-        given(linkMapper.toCreateLinkResponse(savedLink)).willReturn(response);
+        given(linkMapper.toLink(anyString(), anyString(), eq(uniqueShortUrl), anyBoolean(), anyBoolean(), anyString()))
+                .willReturn(linkToSave);
 
-        return savedLink;
+        given(linkTransactionalPersister.persistAndPublish(eq(linkToSave), eq(eventPublisher)))
+                .willReturn(expectedResponse);
+
+        return expectedResponse;
     }
 }

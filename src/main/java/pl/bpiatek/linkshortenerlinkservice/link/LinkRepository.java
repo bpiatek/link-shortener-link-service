@@ -16,7 +16,8 @@ interface LinkRepository {
 
     Optional<Link> findByIdAndUserId(Long id, String userId);
 
-    void deleteByIdAndUserId(Link link);
+    void deleteByIdAndUserId(Long id, String userId);
 
-    int deleteDeactivatedCustomLinksOlderThan(Instant cutoffDate);
+    List<Link> deleteAndReturnDeactivatedCustomLinksOlderThan(Instant cutoffDate);
+
 }

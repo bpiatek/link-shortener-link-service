@@ -4,11 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.transaction.support.TransactionTemplate;
 import pl.bpiatek.linkshortenerlinkservice.api.dto.CreateLinkResponse;
 import pl.bpiatek.linkshortenerlinkservice.exception.UnableToGenerateUniqueShortUrlException;
-
-import java.util.Objects;
 
 
 class RandomShortUrlCreationStrategy implements LinkCreationStrategy {
@@ -16,16 +13,14 @@ class RandomShortUrlCreationStrategy implements LinkCreationStrategy {
     private static final Logger log = LoggerFactory.getLogger(RandomShortUrlCreationStrategy.class);
     private static final int MAX_GENERATION_ATTEMPTS = 5;
 
-    private final LinkRepository linkRepository;
     private final LinkMapper linkMapper;
     private final ShortUrlGenerator shortUrlGenerator;
-    private final TransactionTemplate transactionTemplate;
+    private final LinkTransactionalPersister linkTransactionalPersister;
 
-    RandomShortUrlCreationStrategy(LinkRepository linkRepository, LinkMapper linkMapper, ShortUrlGenerator shortUrlGenerator, TransactionTemplate transactionTemplate) {
-        this.linkRepository = linkRepository;
+    RandomShortUrlCreationStrategy(LinkMapper linkMapper, ShortUrlGenerator shortUrlGenerator, LinkTransactionalPersister linkTransactionalPersister) {
         this.linkMapper = linkMapper;
         this.shortUrlGenerator = shortUrlGenerator;
-        this.transactionTemplate = transactionTemplate;
+        this.linkTransactionalPersister = linkTransactionalPersister;
     }
 
     @Override
@@ -35,18 +30,8 @@ class RandomShortUrlCreationStrategy implements LinkCreationStrategy {
             var linkToSave = linkMapper.toLink(userId, longUrl, generatedShortUrl, isActive, false, title);
 
             try {
-                var savedLink = transactionTemplate.execute( status -> {
-                    var result = linkRepository.save(linkToSave);
-                    eventPublisher.publishEvent(new LinkCreatedApplicationEvent(result));
-
-                    return result;
-                });
-
-                Objects.requireNonNull(savedLink, "Transaction completed but returned a null Link");
-
-                return linkMapper.toCreateLinkResponse(savedLink);
+                return linkTransactionalPersister.persistAndPublish(linkToSave, eventPublisher);
             } catch (DataIntegrityViolationException e) {
-                // A collision occurred due to the race condition.
                 log.warn("Collision while creating short url: {}", generatedShortUrl);
             }
         }
