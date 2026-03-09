@@ -5,12 +5,17 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.RestClient;
 import pl.bpiatek.contracts.link.LinkLifecycleEventProto;
 
+import java.net.http.HttpClient;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
@@ -142,5 +147,20 @@ class LinkConfig {
     @Bean
     LinkCleanupScheduler linkCleanupScheduler(LinkManipulationService linkManipulationService) {
         return new LinkCleanupScheduler(linkManipulationService);
+    }
+
+    @Bean
+    RestClient vaultRestClient(RestClient.Builder builder,
+                               @Value("${vault.address:http://vault.vault.svc.cluster.local:8200}") String vaultAddress) {
+        var httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(Duration.ofSeconds(2))
+                .build();
+
+        return builder
+                .baseUrl(vaultAddress)
+                .requestFactory(new JdkClientHttpRequestFactory(httpClient))
+                .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> {})
+                .build();
     }
 }

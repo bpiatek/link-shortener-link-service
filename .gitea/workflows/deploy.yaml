@@ -20,12 +20,19 @@ jobs:
     name: Build and Deploy to ${{ github.event.inputs.environment }}
     runs-on: java21-build
     env:
-      DOCKER_BUILDKIT: 1
       TARGET_ENV: ${{ github.event.inputs.environment || 'dev' }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+          settings-path: ${{ github.workspace }}
 
       - name: Create Maven settings.xml for Docker build
         run: |
@@ -47,29 +54,31 @@ jobs:
       - name: Run Maven Tests
         run: |
           echo "Running unit tests..."
-          # We use the settings.xml created above. 
-          # If tests fail, 'mvn' returns exit code 1, and the pipeline STOPS here.
           mvn -s settings.xml clean verify
           echo "Tests passed successfully."
 
-      - name: Get Image Tag and Name
-        id: image_info
+      - name: Extract Spring Boot Layers
         run: |
-          echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "name=link-shortener-link-service" >> $GITHUB_OUTPUT
-
-      - name: Build Docker Image
-        run: |
-          docker build \
-            --secret id=maven-settings,src=settings.xml \
-            -t ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }} .
-          echo "Docker image built: ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }}"
+          # Extract the layers natively on the runner to prepare for Docker
+          java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted
 
       - name: Clean up Maven settings.xml
         if: always()
         run: |
           rm settings.xml
           echo "Cleaned up temporary settings.xml"
+
+      - name: Get Image Tag and Name
+        id: image_info
+        run: |
+          echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "name=link-shortener-notification-service" >> $GITHUB_OUTPUT
+
+      - name: Build Docker Image
+        run: |
+          # No secrets needed here anymore. It just copies the layers.
+          docker build -t ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }} .
+          echo "Docker image built: ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }}"
 
       - name: Import Image into MicroK8s
         run: |
@@ -87,5 +96,7 @@ jobs:
             --values helm/values-$TARGET_ENV.yaml \
             --set image.repository=${{ steps.image_info.outputs.name }} \
             --set image.tag=${{ steps.image_info.outputs.tag }} \
-            --set spring.profiles.active=$TARGET_ENV
+            --set spring.profiles.active=$TARGET_ENV \
+            --atomic \
+            --timeout 3m
           echo "Helm deployment finished."

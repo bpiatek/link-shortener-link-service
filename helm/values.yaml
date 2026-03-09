@@ -24,7 +24,19 @@ env:
   - name: JAVA_TOOL_OPTIONS
     value: "-XX:MaxRAMPercentage=75.0"
 
+env:
+  - name: JAVA_TOOL_OPTIONS
+    value: "-XX:MaxRAMPercentage=65.0 -XX:+UseSerialGC"
+
 vault:
   role: ""
   secretPath: ""
   secretTemplate: ""
+  agent:
+    resources:
+      requests:
+        cpu: "10m"
+        memory: "32Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
