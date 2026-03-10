@@ -157,6 +157,9 @@ class LinkConfig {
                 .connectTimeout(Duration.ofSeconds(2))
                 .build();
 
+        var requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(2));
+
         return builder
                 .baseUrl(vaultAddress)
                 .requestFactory(new JdkClientHttpRequestFactory(httpClient))

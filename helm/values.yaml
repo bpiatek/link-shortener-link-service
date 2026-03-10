@@ -14,15 +14,11 @@ spring:
 
 resources:
   requests:
-    cpu: "50m"
+    cpu: "100m"
     memory: "384Mi"
   limits:
     cpu: "1"
     memory: "768Mi"
-
-env:
-  - name: JAVA_TOOL_OPTIONS
-    value: "-XX:MaxRAMPercentage=75.0"
 
 env:
   - name: JAVA_TOOL_OPTIONS
