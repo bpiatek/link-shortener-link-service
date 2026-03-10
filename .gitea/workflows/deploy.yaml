@@ -73,11 +73,6 @@ jobs:
           echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "name=link-shortener-link-service" >> $GITHUB_OUTPUT
 
-      - name: Debug workspace
-        run: |
-          echo "Workspace contents:"
-          ls -R
-
       - name: Build Docker Image
         run: |
           export DOCKER_BUILDKIT=1
