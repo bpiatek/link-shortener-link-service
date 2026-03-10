@@ -59,8 +59,7 @@ jobs:
 
       - name: Extract Spring Boot Layers
         run: |
-          # Extract the layers natively on the runner to prepare for Docker
-          java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted
+          java -Djarmode=tools -jar target/*.jar extract --destination target/extracted
 
       - name: Clean up Maven settings.xml
         if: always()
@@ -72,11 +71,11 @@ jobs:
         id: image_info
         run: |
           echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "name=link-shortener-notification-service" >> $GITHUB_OUTPUT
+          echo "name=link-shortener-link-service" >> $GITHUB_OUTPUT
 
       - name: Build Docker Image
         run: |
-          # No secrets needed here anymore. It just copies the layers.
+          export DOCKER_BUILDKIT=1
           docker build -t ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }} .
           echo "Docker image built: ${{ steps.image_info.outputs.name }}:${{ steps.image_info.outputs.tag }}"
 
@@ -88,15 +87,33 @@ jobs:
       - name: Run Helm Upgrade
         run: |
           set -euo pipefail
+          RELEASE_NAME="link-shortener-link-service-$TARGET_ENV"
+          NAMESPACE="$TARGET_ENV"
+          
+          echo "Checking for stuck Helm locks on $RELEASE_NAME..."
+          
+          # Suppress errors if the release doesn't exist yet
+          STATUS=$(sudo /snap/bin/microk8s helm status $RELEASE_NAME -n $NAMESPACE -o json 2>/dev/null | jq -r .info.status || echo "not-found")
+          
+          if [[ "$STATUS" == "pending-upgrade" || "$STATUS" == "pending-install" || "$STATUS" == "pending-rollback" ]]; then
+            echo "Detected stuck release state: $STATUS. Automatically rolling back to clear the lock..."
+            sudo /snap/bin/microk8s helm rollback $RELEASE_NAME -n $NAMESPACE
+            echo "Lock cleared. Proceeding with deployment."
+          else
+            echo "Release status is $STATUS. No locks detected."
+          fi
+    
+          set -euo pipefail
           echo "Deploying with Helm to: $TARGET_ENV"
           sudo /snap/bin/microk8s helm upgrade --install \
-            link-shortener-link-service-$TARGET_ENV \
+            $RELEASE_NAME \
             ./helm \
-            --namespace $TARGET_ENV \
+            --namespace $NAMESPACE \
             --values helm/values-$TARGET_ENV.yaml \
             --set image.repository=${{ steps.image_info.outputs.name }} \
             --set image.tag=${{ steps.image_info.outputs.tag }} \
             --set spring.profiles.active=$TARGET_ENV \
             --atomic \
+            --cleanup-on-fail \
             --timeout 3m
           echo "Helm deployment finished."

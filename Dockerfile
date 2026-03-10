@@ -1,14 +1,13 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN groupadd -r spring && useradd -r -g spring spring
 USER spring:spring
 
-# Copy the pre-extracted layers directly from the CI runner's target directory
-COPY target/extracted/dependencies/ ./
-COPY target/extracted/spring-boot-loader/ ./
-COPY target/extracted/snapshot-dependencies/ ./
-COPY target/extracted/application/ ./
+COPY --chown=spring:spring target/extracted/dependencies/ ./
+COPY --chown=spring:spring target/extracted/spring-boot-loader/ ./
+COPY --chown=spring:spring target/extracted/snapshot-dependencies/ ./
+COPY --chown=spring:spring target/extracted/application/ ./
 
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
