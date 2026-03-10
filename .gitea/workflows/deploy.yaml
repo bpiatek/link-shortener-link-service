@@ -60,6 +60,7 @@ jobs:
       - name: Extract Spring Boot Layers
         run: |
           java -Djarmode=tools -jar target/*.jar extract --destination target/extracted
+          mv target/extracted ./docker-layers
 
       - name: Clean up Maven settings.xml
         if: always()
