@@ -1,25 +1,17 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  # Using the full name to ensure uniqueness across the namespace
   name: {{ .Release.Name }}-{{ .Chart.Name }}
   labels:
-    # Essential for discovery by the MicroK8s Prometheus Operator
     release: kube-prom-stack
-    {{- if .Values.commonLabels }}
-    {{- toYaml .Values.commonLabels | nindent 4 }}
-    {{- end }}
 spec:
   selector:
     matchLabels:
       app: {{ .Release.Name }}-{{ .Chart.Name }}
   endpoints:
-    - port: http-metrics
-      path: '/actuator/prometheus'
-    # Increased interval to reduce scrape pressure on the home server
-      interval: 30s
-    # ScrapeTimeout MUST be less than the interval.
-    # 25s provides a massive window for the JVM to respond during GC or high load.
-      scrapeTimeout: 25s
-    # Ensures labels defined in the app (like 'application') aren't overwritten
-      honorLabels: true
+      - port: http-metrics
+        path: '/actuator/prometheus'
+        interval: 30s
+        scrapeTimeout: 25s
+    # This is critical to fix label collisions and dashboard filtering
+        honorLabels: true
