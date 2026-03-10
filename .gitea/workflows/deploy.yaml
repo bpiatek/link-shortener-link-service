@@ -60,7 +60,6 @@ jobs:
       - name: Extract Spring Boot Layers
         run: |
           java -Djarmode=tools -jar target/*.jar extract --destination target/extracted
-          mv target/extracted ./docker-layers
 
       - name: Clean up Maven settings.xml
         if: always()
@@ -73,6 +72,11 @@ jobs:
         run: |
           echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
           echo "name=link-shortener-link-service" >> $GITHUB_OUTPUT
+
+      - name: Debug workspace
+        run: |
+          echo "Workspace contents:"
+          ls -R
 
       - name: Build Docker Image
         run: |
