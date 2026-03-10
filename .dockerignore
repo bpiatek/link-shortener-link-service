@@ -5,4 +5,5 @@ settings.xml
 
 target/*
 
-!target/extracted/
+!target/extracted
+!target/extracted/**
